@@ -4,6 +4,7 @@ import { adminApi } from '../api/endpoints';
 import { useToast } from './Toast';
 import { Button, ErrorBox, Field, cx } from './ui';
 import { folderLabel, freeRanges, rangeLabel, todayISO } from '../utils/format';
+import UserSelect, { textMatches } from './UserPicker';
 
 let rowKey = 1;
 const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '' });
@@ -28,6 +29,7 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
   const [excelIds, setExcelIds] = useState(new Set());
   const [rows, setRows] = useState([]);
   const [notes, setNotes] = useState('');
+  const [folderQ, setFolderQ] = useState('');
 
   useEffect(() => {
     if (initial) {
@@ -46,6 +48,18 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
   }, [initial, prefill, defaultDate]);
 
   const folderMap = useMemo(() => new Map(upload.imageFolders.map((f) => [f.id, f])), [upload]);
+  const visibleFolders = useMemo(
+    () => upload.imageFolders.filter((f) => textMatches(folderLabel(f), folderQ)),
+    [upload, folderQ],
+  );
+
+  const addRange = () => {
+    // when the folder search narrows down to exactly one folder, pre-select it
+    const only = folderQ.trim() && visibleFolders.length === 1 ? visibleFolders[0] : null;
+    if (!only) { setRows((rs) => [...rs, newRow()]); return; }
+    const gap = freeRanges(only.imageCount, takenOn(only, workDate, initial?.id))[0];
+    setRows((rs) => [...rs, newRow({ imageFolderId: only.id, startPosition: gap ? gap.startPosition : 1, endPosition: gap ? gap.endPosition : only.imageCount })]);
+  };
 
   const save = useMutation({
     mutationFn: () => {
@@ -104,12 +118,11 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
       onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Assign to" required>
-          <select className="input" value={userId} onChange={(e) => setUserId(e.target.value)} required>
-            <option value="">Select a user…</option>
-            {userList.map((u) => <option key={u.id} value={u.id}>{u.fullName} ({u.employeeId})</option>)}
-          </select>
-        </Field>
+        <div>
+          <span className="mb-1 block text-sm font-medium text-slate-700">Assign to <span className="text-red-500">*</span></span>
+          <UserSelect users={userList} value={userId} onChange={setUserId} />
+          <span className="mt-1 block text-xs text-slate-500">Search by name, employee ID or email ({userList.length} users).</span>
+        </div>
         <Field label="Working date" required>
           <input type="date" className="input" value={workDate} onChange={(e) => setWorkDate(e.target.value)} required />
         </Field>
@@ -141,8 +154,25 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
       <div>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-medium text-slate-700">Image ranges</p>
-          <Button size="sm" variant="secondary" onClick={() => setRows((rs) => [...rs, newRow()])} disabled={!upload.imageFolders.length}>+ Add range</Button>
+          <Button size="sm" variant="secondary" onClick={addRange} disabled={!upload.imageFolders.length}>+ Add range</Button>
         </div>
+        {upload.imageFolders.length > 0 && (
+          <div className="mb-2">
+            <input
+              type="search"
+              className="input"
+              placeholder="Search folder name…"
+              value={folderQ}
+              onChange={(e) => setFolderQ(e.target.value)}
+            />
+            {folderQ.trim() && (
+              <p className="mt-1 text-xs text-slate-500">
+                {visibleFolders.length} of {upload.imageFolders.length} folders match
+                {visibleFolders.length === 1 && ' — “+ Add range” will pick it for you'}
+              </p>
+            )}
+          </div>
+        )}
         {rows.length === 0 && <p className="text-sm text-slate-500">{upload.imageFolders.length ? 'No image range added.' : 'This ZIP has no image folders.'}</p>}
         <div className="space-y-2">
           {rows.map((r) => {
@@ -154,7 +184,9 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
                   <Field label="Folder">
                     <select className="input" value={r.imageFolderId} onChange={(e) => updateRow(r.key, { imageFolderId: e.target.value })} required>
                       <option value="">Choose folder…</option>
-                      {upload.imageFolders.map((f) => <option key={f.id} value={f.id}>{folderLabel(f)} ({f.imageCount} images)</option>)}
+                      {upload.imageFolders
+                        .filter((f) => textMatches(folderLabel(f), folderQ) || String(f.id) === String(r.imageFolderId))
+                        .map((f) => <option key={f.id} value={f.id}>{folderLabel(f)} ({f.imageCount} images)</option>)}
                     </select>
                   </Field>
                   <Field label="From">
@@ -188,7 +220,7 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
 
       <div className="flex justify-end gap-2">
         {onCancel && <Button variant="secondary" onClick={onCancel}>Cancel</Button>}
-        <Button type="submit" loading={save.isPending}>{editing ? 'Save changes' : 'Assign work'}</Button>
+        <Button type="submit" loading={save.isPending} disabled={!userId}>{editing ? 'Save changes' : 'Assign work'}</Button>
       </div>
     </form>
   );

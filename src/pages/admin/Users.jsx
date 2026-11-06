@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/endpoints';
-import { errorMessage } from '../../api/client';
+import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import {
-  Badge, Button, Card, ConfirmModal, EmptyState, ErrorBox, Field, Modal, PageHeader, PageLoader,
+  Badge, Button, Card, ConfirmModal, EmptyState, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader,
 } from '../../components/ui';
 import { formatDateTime } from '../../utils/format';
 
@@ -68,6 +68,107 @@ function UserFormModal({ open, onClose, user }) {
   );
 }
 
+function BulkUploadModal({ open, onClose }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const inputRef = useRef(null);
+  const [file, setFile] = useState(null);
+  const [progress, setProgress] = useState(0);
+
+  const upload = useMutation({
+    mutationFn: () => adminApi.bulkCreateUsers(file, setProgress),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      if (res.createdCount) toast.success(`${res.createdCount} user(s) created — default password: ${res.defaultPassword}`);
+    },
+  });
+
+  useEffect(() => {
+    if (open) { setFile(null); setProgress(0); upload.reset(); if (inputRef.current) inputRef.current.value = ''; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const result = upload.data;
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="lg"
+      title="Bulk upload users (CSV)"
+      footer={(
+        <>
+          <Button variant="secondary" onClick={onClose}>{result ? 'Close' : 'Cancel'}</Button>
+          {!result && <Button onClick={() => upload.mutate()} disabled={!file} loading={upload.isPending}>Upload &amp; create users</Button>}
+        </>
+      )}
+    >
+      {!result && (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-900">
+            <span>Columns: <strong>employeeId, firstName, middleName, lastName, email</strong> (middleName is optional).</span>
+            <LinkButton size="sm" href={fileUrl('/admin/users/csv-template')} download>⬇ Download sample CSV</LinkButton>
+          </div>
+
+          <div>
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
+              onChange={(e) => { setFile(e.target.files?.[0] || null); upload.reset(); }}
+            />
+            <p className="mt-2 text-xs text-slate-500">
+              Every new account gets the default password <strong>ism@123</strong>. Rows with an existing Employee ID or email are skipped. Up to 2000 users per file.
+            </p>
+          </div>
+
+          {upload.isPending && (
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div className="h-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} />
+            </div>
+          )}
+          {upload.isError && <ErrorBox error={upload.error} />}
+        </div>
+      )}
+
+      {result && (
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="rounded-lg bg-slate-50 p-3"><div className="text-2xl font-semibold text-slate-800">{result.total}</div><div className="text-xs text-slate-500">Rows in file</div></div>
+            <div className="rounded-lg bg-emerald-50 p-3"><div className="text-2xl font-semibold text-emerald-700">{result.createdCount}</div><div className="text-xs text-emerald-700">Created</div></div>
+            <div className="rounded-lg bg-red-50 p-3"><div className="text-2xl font-semibold text-red-700">{result.failedCount}</div><div className="text-xs text-red-700">Skipped / failed</div></div>
+          </div>
+
+          {result.createdCount > 0 && (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-900">
+              {result.createdCount} user(s) created. Default password: <strong>{result.defaultPassword}</strong>
+            </p>
+          )}
+
+          {result.errors.length > 0 && (
+            <div className="max-h-64 overflow-auto rounded-lg border border-slate-200">
+              <table className="min-w-full divide-y divide-slate-100 text-sm">
+                <thead className="bg-slate-50"><tr><th className="th">CSV row</th><th className="th">Employee ID</th><th className="th">Email</th><th className="th">Reason</th></tr></thead>
+                <tbody className="divide-y divide-slate-100">
+                  {result.errors.map((e, i) => (
+                    <tr key={`${e.row}-${i}`}>
+                      <td className="td tabular-nums">{e.row}</td>
+                      <td className="td font-mono text-xs">{e.employeeId || '—'}</td>
+                      <td className="td">{e.email || '—'}</td>
+                      <td className="td text-red-700">{e.reason}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
 export default function UsersPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -75,6 +176,7 @@ export default function UsersPage() {
   const [debounced, setDebounced] = useState('');
   const [status, setStatus] = useState('all');
   const [editing, setEditing] = useState(null); // null closed, {} new, user edit
+  const [bulkOpen, setBulkOpen] = useState(false);
   const [confirm, setConfirm] = useState(null); // { type, user }
 
   useEffect(() => {
@@ -116,7 +218,12 @@ export default function UsersPage() {
       <PageHeader
         title="Users"
         description="Create employee accounts and manage access."
-        actions={<Button onClick={() => setEditing({})}>+ Add user</Button>}
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => setBulkOpen(true)}>⬆ Bulk upload (CSV)</Button>
+            <Button onClick={() => setEditing({})}>+ Add user</Button>
+          </div>
+        )}
       />
 
       <Card bodyClass="">
@@ -171,6 +278,7 @@ export default function UsersPage() {
         )}
       </Card>
 
+      <BulkUploadModal open={bulkOpen} onClose={() => setBulkOpen(false)} />
       <UserFormModal open={editing !== null} user={editing?.id ? editing : null} onClose={() => setEditing(null)} />
 
       <ConfirmModal

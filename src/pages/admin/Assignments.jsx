@@ -5,6 +5,7 @@ import { adminApi, urls } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import { AssignmentDetailModal, EditAssignmentModal } from '../../components/AdminModals';
+import UserSelect, { userMatches } from '../../components/UserPicker';
 import {
   Button, Card, ConfirmModal, EmptyState, ErrorBox, PageHeader, PageLoader, STATUS_OPTIONS, StatusBadge, statusLabel,
 } from '../../components/ui';
@@ -18,6 +19,7 @@ export default function AssignmentsPage() {
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [search, setSearch] = useState('');
 
   const mode = params.get('mode') || 'day'; // day | range
   const filters = {
@@ -64,7 +66,12 @@ export default function AssignmentsPage() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  const list = q.data || [];
+  // text search (name / employee ID / email) — matched against the full users list
+  const matchIds = useMemo(
+    () => (search.trim() ? new Set((usersQ.data || []).filter((u) => userMatches(u, search)).map((u) => u.id)) : null),
+    [search, usersQ.data],
+  );
+  const list = useMemo(() => (q.data || []).filter((a) => !matchIds || matchIds.has(a.user.id)), [q.data, matchIds]);
   const counts = list.reduce((c, a) => ({ ...c, [a.status]: (c[a.status] || 0) + 1 }), {});
   const allSelected = list.length > 0 && selected.size === list.length;
 
@@ -92,10 +99,21 @@ export default function AssignmentsPage() {
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
           </select>
-          <select className="input w-auto max-w-56" value={filters.userId} onChange={(e) => setFilter('userId', e.target.value)}>
-            <option value="">All users</option>
-            {usersQ.data?.map((u) => <option key={u.id} value={u.id}>{u.fullName} ({u.employeeId})</option>)}
-          </select>
+          <UserSelect
+            className="w-72"
+            users={usersQ.data || []}
+            value={filters.userId}
+            onChange={(id) => setFilter('userId', id)}
+            emptyLabel="All users"
+          />
+          <input
+            type="search"
+            className="input w-60"
+            placeholder="Search name, employee ID, email…"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
+            aria-label="Search assignments by user"
+          />
           <select className="input w-auto max-w-56" value={filters.zipUploadId} onChange={(e) => setFilter('zipUploadId', e.target.value)}>
             <option value="">All ZIPs</option>
             {uploadsQ.data?.map((u) => <option key={u.id} value={u.id}>{u.originalName}</option>)}
@@ -103,7 +121,7 @@ export default function AssignmentsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-2.5 text-sm">
-          <span className="text-slate-600">{list.length} assignment(s)</span>
+          <span className="text-slate-600">{list.length} assignment(s){search.trim() && ` matching “${search.trim()}”`}</span>
           {STATUS_OPTIONS.map((s) => counts[s] ? <span key={s} className="flex items-center gap-1"><StatusBadge status={s} /> {counts[s]}</span> : null)}
           {selected.size > 0 && (
             <span className="ml-auto flex items-center gap-2">

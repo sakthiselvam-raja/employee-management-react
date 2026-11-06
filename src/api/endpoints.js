@@ -17,6 +17,14 @@ export const adminApi = {
 
   users: (params) => data(api.get('/admin/users', { params })).then((d) => d.users),
   createUser: (body) => data(api.post('/admin/users', body)),
+  bulkCreateUsers: (file, onProgress) => {
+    const form = new FormData();
+    form.append('file', file);
+    return data(api.post('/admin/users/bulk', form, {
+      onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+      timeout: 0,
+    }));
+  },
   updateUser: (id, body) => data(api.put(`/admin/users/${id}`, body)),
   setUserStatus: (id, isActive) => data(api.patch(`/admin/users/${id}/status`, { isActive })),
   resetPassword: (id) => data(api.post(`/admin/users/${id}/reset-password`)),

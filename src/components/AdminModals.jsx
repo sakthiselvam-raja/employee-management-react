@@ -11,6 +11,7 @@ import {
 } from './ui';
 import { formatBytes, formatDateTime, formatWorkDate, rangeLabel, splitEvenly, freeRanges } from '../utils/format';
 import { takenOn } from './AssignmentForm';
+import { userMatches } from './UserPicker';
 
 /** Browse images of a folder (optionally only a range) as admin */
 export function FolderImagesModal({ target, onClose }) {
@@ -179,6 +180,7 @@ export function SplitFolderModal({ upload, folder, date, users, onClose }) {
   const [picked, setPicked] = useState([]);
   const [excelIds, setExcelIds] = useState([]);
   const [workDate, setWorkDate] = useState(date);
+  const [userQ, setUserQ] = useState('');
 
   const free = folder ? freeRanges(folder.imageCount, takenOn(folder, workDate)) : [];
   const [gapIndex, setGapIndex] = useState(0);
@@ -242,8 +244,16 @@ export function SplitFolderModal({ upload, folder, date, users, onClose }) {
 
           <div>
             <p className="mb-1 font-medium text-slate-700">Users (in order) — {picked.length} selected</p>
+            <input
+              type="search"
+              className="input mb-2"
+              placeholder="Search by name, employee ID or email…"
+              value={userQ}
+              onChange={(e) => setUserQ(e.target.value)}
+            />
             <div className="grid max-h-48 gap-1 overflow-y-auto rounded-lg border border-slate-200 p-2 sm:grid-cols-2">
-              {users.map((u) => (
+              {users.filter((u) => userMatches(u, userQ)).length === 0 && <p className="col-span-full px-2 py-1 text-slate-500">No matching users</p>}
+              {users.filter((u) => userMatches(u, userQ)).map((u) => (
                 <label key={u.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-slate-50">
                   <input type="checkbox" className="accent-brand-700" checked={picked.includes(u.id)} onChange={() => toggle(picked, setPicked, u.id)} />
                   <span className="truncate">{u.fullName} <span className="text-xs text-slate-500">({u.employeeId})</span></span>

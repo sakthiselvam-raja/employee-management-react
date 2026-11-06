@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { userApi } from '../../api/endpoints';
 import { useMe } from '../../hooks/useAuth';
 import {
-  EmptyState, ErrorBox, PageHeader, PageLoader, STATUS_OPTIONS, StatCard, StatusBadge, statusLabel,
+  Button, EmptyState, ErrorBox, PageHeader, PageLoader, STATUS_OPTIONS, StatCard, StatusBadge, statusLabel,
 } from '../../components/ui';
 import { formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
 
@@ -26,6 +26,7 @@ export default function MyTasksPage() {
         description={allDates ? 'All work assigned to you' : `Work assigned to you for ${formatWorkDate(date)}`}
         actions={(
           <>
+            <Button variant="secondary" onClick={() => q.refetch()} loading={q.isFetching}>⟳ Refresh</Button>
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input type="checkbox" className="accent-brand-700" checked={allDates} onChange={(e) => setAllDates(e.target.checked)} /> All dates
             </label>

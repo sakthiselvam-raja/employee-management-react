@@ -10,6 +10,7 @@ import {
   Badge, Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, StatusBadge,
 } from '../../components/ui';
 import { DeleteUploadModal } from './Uploads';
+import { textMatches } from '../../components/UserPicker';
 import { formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel, todayISO } from '../../utils/format';
 
 const PALETTE = ['#0d9488', '#6366f1', '#e11d48', '#d97706', '#0284c7', '#7c3aed', '#16a34a', '#db2777', '#475569', '#ca8a04'];
@@ -47,6 +48,7 @@ export default function UploadDetailPage() {
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(false);
+  const [folderQ, setFolderQ] = useState('');
 
   const q = useQuery({ queryKey: ['upload', Number(id)], queryFn: () => adminApi.upload(id) });
   const usersQ = useQuery({ queryKey: ['users', '', 'active'], queryFn: () => adminApi.users({ status: 'active' }) });
@@ -65,6 +67,7 @@ export default function UploadDetailPage() {
   };
 
   const s = u.assignmentSummary;
+  const folders = u.imageFolders.filter((f) => textMatches(f.relativePath || '(root)', folderQ));
 
   return (
     <>
@@ -103,10 +106,17 @@ export default function UploadDetailPage() {
       <div className="grid gap-6 xl:grid-cols-5">
         <div className="space-y-6 xl:col-span-3">
           {/* Image folders */}
-          <Card title={`Image folders (${u.imageFolders.length})`} bodyClass="">
+          <Card
+            title={`Image folders (${folderQ.trim() ? `${folders.length} of ${u.imageFolders.length}` : u.imageFolders.length})`}
+            bodyClass=""
+            actions={u.imageFolders.length > 0 && (
+              <input type="search" className="input w-56 py-1.5" placeholder="Search folder name…" value={folderQ} onChange={(e) => setFolderQ(e.target.value)} />
+            )}
+          >
             {u.imageFolders.length === 0 && <EmptyState title="No image folders in this ZIP" icon="🖼️" />}
+            {u.imageFolders.length > 0 && folders.length === 0 && <EmptyState title="No folder matches your search" icon="🔍" />}
             <ul className="divide-y divide-slate-100">
-              {u.imageFolders.map((f) => {
+              {folders.map((f) => {
                 const taken = takenOn(f, date);
                 const assignedCount = taken.reduce((n, r) => n + r.endPosition - r.startPosition + 1, 0);
                 return (
