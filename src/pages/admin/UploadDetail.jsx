@@ -187,7 +187,7 @@ export default function UploadDetailPage() {
                 <EmptyState icon="👥" title="No active users" description="Create users first." action={<Button onClick={() => navigate('/admin/users')}>Go to Users</Button>} />
               )}
               {usersQ.data?.length > 0 && (
-                <AssignmentForm upload={u} users={usersQ.data} defaultDate={date} prefill={prefill} onDone={() => setPrefill(null)} />
+                <AssignmentForm upload={u} defaultDate={date} prefill={prefill} onDone={() => setPrefill(null)} />
               )}
             </Card>
           </div>

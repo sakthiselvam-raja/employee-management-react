@@ -16,6 +16,8 @@ export const adminApi = {
   dashboard: (date) => data(api.get('/admin/dashboard', { params: { date } })),
 
   users: (params) => data(api.get('/admin/users', { params })).then((d) => d.users),
+  /** paginated: { users, total, page, limit, pages } — pass page + limit */
+  usersPage: (params) => data(api.get('/admin/users', { params })),
   createUser: (body) => data(api.post('/admin/users', body)),
   bulkCreateUsers: (file, onProgress) => {
     const form = new FormData();

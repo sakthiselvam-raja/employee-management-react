@@ -154,16 +154,15 @@ export function EditAssignmentModal({ assignment, onClose }) {
     queryFn: () => adminApi.upload(assignment.zipUpload.id),
     enabled: Boolean(assignment),
   });
-  const usersQ = useQuery({ queryKey: ['users', '', 'active'], queryFn: () => adminApi.users({ status: 'active' }), enabled: Boolean(assignment) });
 
   return (
     <Modal open={Boolean(assignment)} onClose={onClose} size="lg" title={assignment ? `Edit assignment #${assignment.id}` : ''}>
-      {(uploadQ.isLoading || usersQ.isLoading) && <PageLoader />}
+      {uploadQ.isLoading && <PageLoader />}
       {uploadQ.isError && <ErrorBox error={uploadQ.error} />}
-      {uploadQ.data && usersQ.data && (
+      {uploadQ.data && (
         <>
           <p className="mb-4 text-xs text-slate-500">Changing the user resets the status to Pending.</p>
-          <AssignmentForm upload={uploadQ.data} users={usersQ.data} initial={assignment} onDone={onClose} onCancel={onClose} />
+          <AssignmentForm upload={uploadQ.data} initial={assignment} onDone={onClose} onCancel={onClose} />
         </>
       )}
     </Modal>

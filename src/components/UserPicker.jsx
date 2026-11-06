@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { adminApi } from '../api/endpoints';
 import { cx } from './ui';
 
 export const userLabel = (u) => `${u.fullName} (${u.employeeId})`;
@@ -107,6 +109,98 @@ export default function UserSelect({
           ))}
           {matches.length > MAX_SHOWN && (
             <p className="border-t border-slate-100 px-3 py-1.5 text-xs text-slate-500">Showing first {MAX_SHOWN} of {matches.length} — keep typing to narrow down.</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Searchable, PAGINATED user dropdown for large user lists (hundreds / thousands).
+ * Users are searched and paged on the server, so nothing big is loaded up front.
+ * value is the user id as a string; onChange(id, user). selectedUser = fallback to show the current user's label.
+ */
+export function RemoteUserSelect({
+  value, onChange, selectedUser, status = 'active', pageSize = 20, className, disabled,
+  placeholder = 'Search by name, employee ID or email…',
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [page, setPage] = useState(1);
+  const [picked, setPicked] = useState(null);
+  const boxRef = useRef(null);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(query.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [query]);
+
+  useEffect(() => {
+    const onDown = (e) => { if (boxRef.current && !boxRef.current.contains(e.target)) { setOpen(false); setQuery(''); } };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, []);
+
+  const q = useQuery({
+    queryKey: ['users', 'picker', status, debounced, page, pageSize],
+    queryFn: () => adminApi.usersPage({ status, search: debounced || undefined, page, limit: pageSize }),
+    enabled: open,
+    placeholderData: keepPreviousData,
+    staleTime: 30_000,
+  });
+
+  const selected = [picked, selectedUser].find((u) => u && value !== '' && String(u.id) === String(value)) || null;
+  const choose = (user) => { setPicked(user); onChange(user ? String(user.id) : '', user); setOpen(false); setQuery(''); };
+  const data = q.data;
+
+  return (
+    <div ref={boxRef} className={cx('relative', className)}>
+      <input
+        type="text"
+        role="combobox"
+        aria-expanded={open}
+        autoComplete="off"
+        className="input pr-8"
+        disabled={disabled}
+        value={open ? query : (selected ? userLabel(selected) : '')}
+        placeholder={placeholder}
+        onFocus={() => { setOpen(true); setQuery(''); setPage(1); }}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setQuery(''); } if (e.key === 'Enter') e.preventDefault(); }}
+      />
+      {selected && !disabled && (
+        <button type="button" aria-label="Clear selection" className="absolute top-1/2 right-2 -translate-y-1/2 rounded px-1 text-slate-400 hover:text-slate-700" onClick={() => choose(null)}>×</button>
+      )}
+
+      {open && (
+        <div className="absolute z-30 mt-1 w-full min-w-72 rounded-lg border border-slate-200 bg-white shadow-lg">
+          <div className="max-h-60 overflow-auto py-1">
+            {q.isLoading && <p className="px-3 py-2 text-sm text-slate-500">Loading users…</p>}
+            {q.isError && <p className="px-3 py-2 text-sm text-red-600">Could not load users</p>}
+            {data && data.users.length === 0 && <p className="px-3 py-2 text-sm text-slate-500">No matching users</p>}
+            {data?.users.map((u) => (
+              <button
+                key={u.id}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); choose(u); }}
+                className={cx('block w-full px-3 py-1.5 text-left text-sm hover:bg-brand-50', String(value) === String(u.id) && 'bg-brand-50 font-medium')}
+              >
+                <span className="block truncate text-slate-900">{u.fullName} <span className="text-xs text-slate-500">({u.employeeId})</span></span>
+                {u.email && <span className="block truncate text-xs text-slate-500">{u.email}</span>}
+              </button>
+            ))}
+          </div>
+          {data && (
+            <div className="flex items-center justify-between gap-2 border-t border-slate-100 px-3 py-1.5 text-xs text-slate-500">
+              <span>{data.total} user(s){q.isFetching && ' · updating…'}</span>
+              <span className="flex items-center gap-1">
+                <button type="button" disabled={data.page <= 1} onMouseDown={(e) => { e.preventDefault(); setPage((n) => Math.max(n - 1, 1)); }} className="rounded px-2 py-0.5 hover:bg-slate-100 disabled:opacity-40">‹ Prev</button>
+                <span>Page {data.page} of {data.pages}</span>
+                <button type="button" disabled={data.page >= data.pages} onMouseDown={(e) => { e.preventDefault(); setPage((n) => n + 1); }} className="rounded px-2 py-0.5 hover:bg-slate-100 disabled:opacity-40">Next ›</button>
+              </span>
+            </div>
           )}
         </div>
       )}

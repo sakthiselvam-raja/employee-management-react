@@ -4,7 +4,7 @@ import { adminApi } from '../api/endpoints';
 import { useToast } from './Toast';
 import { Button, ErrorBox, Field, cx } from './ui';
 import { folderLabel, freeRanges, rangeLabel, todayISO } from '../utils/format';
-import UserSelect, { textMatches } from './UserPicker';
+import { RemoteUserSelect, textMatches } from './UserPicker';
 
 let rowKey = 1;
 const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '' });
@@ -16,10 +16,10 @@ export function takenOn(folder, date, excludeAssignmentId) {
 
 /**
  * Create or edit an assignment.
- * upload: GET /admin/uploads/:id result; users: active users; initial: serialized assignment (edit mode)
+ * upload: GET /admin/uploads/:id result; initial: serialized assignment (edit mode)
  * prefill: { imageFolderId, startPosition, endPosition } for quick-assign from a folder row
  */
-export default function AssignmentForm({ upload, users, initial, defaultDate, prefill, onDone, onCancel }) {
+export default function AssignmentForm({ upload, initial, defaultDate, prefill, onDone, onCancel }) {
   const qc = useQueryClient();
   const toast = useToast();
   const editing = Boolean(initial);
@@ -109,9 +109,6 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
     return merged;
   }));
 
-  const selectedUser = users.find((u) => String(u.id) === String(userId));
-  const userList = selectedUser || !initial ? users : [initial.user, ...users];
-
   return (
     <form
       className="space-y-5"
@@ -120,8 +117,8 @@ export default function AssignmentForm({ upload, users, initial, defaultDate, pr
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <span className="mb-1 block text-sm font-medium text-slate-700">Assign to <span className="text-red-500">*</span></span>
-          <UserSelect users={userList} value={userId} onChange={setUserId} />
-          <span className="mt-1 block text-xs text-slate-500">Search by name, employee ID or email ({userList.length} users).</span>
+          <RemoteUserSelect value={userId} onChange={setUserId} selectedUser={initial?.user} status="active" />
+          <span className="mt-1 block text-xs text-slate-500">Search by name, employee ID or email — results are paged.</span>
         </div>
         <Field label="Working date" required>
           <input type="date" className="input" value={workDate} onChange={(e) => setWorkDate(e.target.value)} required />
