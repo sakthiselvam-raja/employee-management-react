@@ -150,7 +150,7 @@ const actionLabels = {
   LOGIN: 'Login', ZIP_UPLOADED: 'ZIP uploaded', ZIP_DELETED: 'ZIP deleted', ZIP_DOWNLOADED: 'ZIP downloaded',
   ASSIGNMENT_CREATED: 'Assignment created', ASSIGNMENT_UPDATED: 'Assignment updated', ASSIGNMENT_REASSIGNED: 'Reassigned',
   ASSIGNMENT_DELETED: 'Assignment deleted', STATUS_CHANGED: 'Status changed', STATUS_CHANGED_BULK: 'Bulk status change',
-  SUBMISSION_UPLOADED: 'User uploaded file/notes', USER_CREATED: 'User created', USER_UPDATED: 'User updated',
+  SUBMISSION_UPLOADED: 'User uploaded file/notes', SUBMISSION_DELETED: 'User deleted a submission', USER_CREATED: 'User created', USER_UPDATED: 'User updated',
   USER_ACTIVATED: 'User activated', USER_DEACTIVATED: 'User deactivated', USER_DELETED: 'User deleted',
   USER_PASSWORD_RESET: 'Password reset', PASSWORD_CHANGED: 'Password changed',
 };

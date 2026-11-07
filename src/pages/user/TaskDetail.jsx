@@ -6,8 +6,9 @@ import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import ImageGallery, { ImagePager, pageImages } from '../../components/ImageGallery';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
+import SelectedFilePreview from '../../components/SelectedFilePreview';
 import {
-  Button, Card, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, StatusBadge,
+  Button, Card, ConfirmModal, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, StatusBadge,
 } from '../../components/ui';
 import { formatBytes, formatDateTime, formatWorkDate, rangeLabel } from '../../utils/format';
 
@@ -76,6 +77,7 @@ function SubmitWork({ assignment, onSubmitted }) {
             className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-100"
           />
         </Field>
+        <SelectedFilePreview file={file} excelLoader={userApi.previewFile} />
         <Field label="Notes for the admin">
           <textarea className="input min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="What you did, issues found, images skipped…" maxLength={5000} />
         </Field>
@@ -103,6 +105,8 @@ export default function TaskDetailPage() {
   const toast = useToast();
   const [preview, setPreview] = useState(null);
   const [range, setRange] = useState(null);
+  const [subPreview, setSubPreview] = useState(null);
+  const [delSub, setDelSub] = useState(null);
 
   const q = useQuery({ queryKey: ['myAssignment', Number(id)], queryFn: () => userApi.assignment(id) });
   const refresh = () => {
@@ -114,6 +118,12 @@ export default function TaskDetailPage() {
     mutationFn: (status) => userApi.setStatus(id, status),
     onSuccess: (_r, status) => { refresh(); toast.success(status === 'COMPLETED' ? 'Marked as completed' : 'Marked as processing'); },
     onError: (e) => toast.error(errorMessage(e)),
+  });
+
+  const deleteSub = useMutation({
+    mutationFn: (sid) => userApi.deleteSubmission(sid),
+    onSuccess: () => { refresh(); setDelSub(null); toast.success('Submission deleted'); },
+    onError: (e) => { setDelSub(null); toast.error(errorMessage(e)); },
   });
 
   if (q.isLoading) return <PageLoader />;
@@ -198,7 +208,11 @@ export default function TaskDetailPage() {
                 <li key={s.id} className="px-5 py-3 text-sm">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-slate-500">{formatDateTime(s.createdAt)}</span>
-                    {s.hasFile && <a className="link text-xs" href={fileUrl(urls.user.submission(s.id))}>Download</a>}
+                    <span className="flex items-center gap-3">
+                      {s.hasFile && <button type="button" className="link text-xs" onClick={() => setSubPreview(s)}>Preview</button>}
+                      {s.hasFile && <a className="link text-xs" href={fileUrl(urls.user.submission(s.id))}>Download</a>}
+                      <button type="button" className="text-xs font-medium text-red-600 hover:underline" onClick={() => setDelSub(s)}>Delete</button>
+                    </span>
                   </div>
                   {s.hasFile && <p className="mt-0.5 truncate text-slate-800">📄 {s.originalName} <span className="text-xs text-slate-500">({formatBytes(s.sizeBytes)})</span></p>}
                   {s.notes && <p className="mt-1 whitespace-pre-wrap text-slate-600">{s.notes}</p>}
@@ -222,6 +236,24 @@ export default function TaskDetailPage() {
         queryKey={['myPreview', a.id, preview?.id]}
         queryFn={() => userApi.excelPreview(a.id, preview.id)}
         downloadPath={preview && urls.user.excel(a.id, preview.id)}
+      />
+      <ExcelPreviewModal
+        open={Boolean(subPreview)}
+        onClose={() => setSubPreview(null)}
+        title={subPreview?.originalName}
+        queryKey={['mySubmissionPreview', subPreview?.id]}
+        queryFn={() => userApi.submissionPreview(subPreview.id)}
+        downloadPath={subPreview && urls.user.submission(subPreview.id)}
+      />
+      <ConfirmModal
+        open={Boolean(delSub)}
+        onClose={() => setDelSub(null)}
+        onConfirm={() => deleteSub.mutate(delSub.id)}
+        loading={deleteSub.isPending}
+        danger
+        title="Delete this submission?"
+        confirmText="Delete"
+        message={delSub?.hasFile ? `“${delSub.originalName}” and its notes will be permanently removed. This cannot be undone.` : 'This note will be permanently removed. This cannot be undone.'}
       />
       <RangeImagesModal assignmentId={a.id} range={range} onClose={() => setRange(null)} />
     </>

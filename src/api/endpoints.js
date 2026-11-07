@@ -69,6 +69,14 @@ export const userApi = {
   setStatus: (id, status) => data(api.patch(`/user/assignments/${id}/status`, { status })),
   rangeImages: (id, rangeId, page, pageSize) => data(api.get(`/user/assignments/${id}/ranges/${rangeId}/images`, { params: { page, pageSize } })),
   excelPreview: (id, excelId) => data(api.get(`/user/assignments/${id}/excel/${excelId}/preview`)),
+  submissionPreview: (id) => data(api.get(`/user/submissions/${id}/preview`)),
+  deleteSubmission: (id) => data(api.delete(`/user/submissions/${id}`)),
+  /** preview of a file the user just picked (nothing is saved) */
+  previewFile: (file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return data(api.post('/user/preview-file', form));
+  },
   submit: (id, { file, notes, markCompleted }, onProgress) => {
     const form = new FormData();
     if (file) form.append('file', file);

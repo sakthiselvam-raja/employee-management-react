@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
+import SelectedFilePreview from '../../components/SelectedFilePreview';
 import { useToast } from '../../components/Toast';
 import {
   Badge, Button, Card, ConfirmModal, EmptyState, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, Pagination,
@@ -68,6 +69,21 @@ function UserFormModal({ open, onClose, user }) {
   );
 }
 
+const CSV_HEADER_ALIASES = {
+  employeeid: 'employeeId', empid: 'employeeId', employeecode: 'employeeId', employeeno: 'employeeId',
+  firstname: 'firstName', middlename: 'middleName', lastname: 'lastName', surname: 'lastName',
+  email: 'email', emailid: 'email', emailaddress: 'email',
+};
+
+/** Tells the admin right after choosing the file whether the header row has the required columns. */
+function checkCsvHeader(cells) {
+  const found = new Set(cells.map((h) => CSV_HEADER_ALIASES[h.toLowerCase().replace(/[^a-z0-9]/g, '')]).filter(Boolean));
+  const missing = ['employeeId', 'firstName', 'lastName', 'email'].filter((k) => !found.has(k));
+  return missing.length
+    ? { ok: false, message: `Missing column(s) in the first row: ${missing.join(', ')}` }
+    : { ok: true, message: '✓ Header row looks good — the required columns were found.' };
+}
+
 function BulkUploadModal({ open, onClose }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -118,6 +134,7 @@ function BulkUploadModal({ open, onClose }) {
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
               onChange={(e) => { setFile(e.target.files?.[0] || null); upload.reset(); }}
             />
+            <div className="mt-3"><SelectedFilePreview file={file} headerCheck={checkCsvHeader} inline /></div>
             <p className="mt-2 text-xs text-slate-500">
               Every new account gets the default password <strong>ism@123</strong>. Rows with an existing Employee ID or email are skipped. Up to 2000 users per file.
             </p>

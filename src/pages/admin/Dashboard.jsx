@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
+import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import { Card, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, StatCard } from '../../components/ui';
 import { formatDateTime, formatWorkDate, todayISO } from '../../utils/format';
 
@@ -21,6 +22,7 @@ export default function AdminDashboard() {
   const [date, setDate] = useState(todayISO());
   const [page, setPage] = useState(1);
   const [subPage, setSubPage] = useState(1);
+  const [subPreview, setSubPreview] = useState(null);
   const [search, setSearch] = useState('');
   const [debounced, setDebounced] = useState('');
   const PAGE_SIZE = 15;
@@ -116,7 +118,12 @@ export default function AdminDashboard() {
                       <p className="truncate text-sm font-medium text-slate-800">{s.uploadedBy?.fullName}</p>
                       <p className="truncate text-xs text-slate-500">{s.zipName} · work date {formatWorkDate(s.workDate)}</p>
                     </div>
-                    {s.hasFile && <a className="link shrink-0 text-xs" href={fileUrl(urls.admin.submission(s.id))}>Download</a>}
+                    {s.hasFile && (
+                      <span className="flex shrink-0 items-center gap-3">
+                        <button type="button" className="link text-xs" onClick={() => setSubPreview(s)}>Preview</button>
+                        <a className="link text-xs" href={fileUrl(urls.admin.submission(s.id))}>Download</a>
+                      </span>
+                    )}
                   </div>
                   {s.originalName && <p className="mt-1 truncate text-xs text-slate-600">📄 {s.originalName}</p>}
                   {s.notes && <p className="mt-1 line-clamp-2 text-xs text-slate-600">“{s.notes}”</p>}
@@ -129,6 +136,15 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+      <ExcelPreviewModal
+        open={Boolean(subPreview)}
+        onClose={() => setSubPreview(null)}
+        title={subPreview?.originalName}
+        queryKey={['adminSubmissionPreview', subPreview?.id]}
+        queryFn={() => adminApi.submissionPreview(subPreview.id)}
+        downloadPath={subPreview && urls.admin.submission(subPreview.id)}
+      />
     </>
   );
 }
