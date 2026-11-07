@@ -44,7 +44,7 @@ export const adminApi = {
     }));
   },
   deleteUpload: (id, force = false) => data(api.delete(`/admin/uploads/${id}`, { params: { force } })),
-  folderImages: (folderId, from, to) => data(api.get(`/admin/files/folders/${folderId}/images`, { params: { from, to } })),
+  folderImages: (folderId, from, to, page, pageSize) => data(api.get(`/admin/files/folders/${folderId}/images`, { params: { from, to, page, pageSize } })),
   excelPreview: (id) => data(api.get(`/admin/files/excel/${id}/preview`)),
   submissionPreview: (id) => data(api.get(`/admin/files/submissions/${id}/preview`)),
 
@@ -67,7 +67,7 @@ export const userApi = {
   assignments: (params) => data(api.get('/user/assignments', { params })).then((d) => d.assignments),
   assignment: (id) => data(api.get(`/user/assignments/${id}`)),
   setStatus: (id, status) => data(api.patch(`/user/assignments/${id}/status`, { status })),
-  rangeImages: (id, rangeId) => data(api.get(`/user/assignments/${id}/ranges/${rangeId}/images`)),
+  rangeImages: (id, rangeId, page, pageSize) => data(api.get(`/user/assignments/${id}/ranges/${rangeId}/images`, { params: { page, pageSize } })),
   excelPreview: (id, excelId) => data(api.get(`/user/assignments/${id}/excel/${excelId}/preview`)),
   submit: (id, { file, notes, markCompleted }, onProgress) => {
     const form = new FormData();

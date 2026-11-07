@@ -1,21 +1,25 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { userApi, urls } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import ImageGallery from '../../components/ImageGallery';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import {
-  Button, Card, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, StatusBadge,
+  Button, Card, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, Pagination, StatusBadge,
 } from '../../components/ui';
 import { formatBytes, formatDateTime, formatWorkDate, rangeLabel } from '../../utils/format';
 
 function RangeImagesModal({ assignmentId, range, onClose }) {
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 24;
+  useEffect(() => { setPage(1); }, [range?.id]);
   const q = useQuery({
-    queryKey: ['rangeImages', assignmentId, range?.id],
-    queryFn: () => userApi.rangeImages(assignmentId, range.id),
+    queryKey: ['rangeImages', assignmentId, range?.id, page],
+    queryFn: () => userApi.rangeImages(assignmentId, range.id, page, PAGE_SIZE),
     enabled: Boolean(range),
+    placeholderData: keepPreviousData,
   });
   return (
     <Modal open={Boolean(range)} onClose={onClose} size="full" title={range ? `${range.folderPath || '(root)'} · images ${rangeLabel(range)}` : ''}
@@ -30,6 +34,7 @@ function RangeImagesModal({ assignmentId, range, onClose }) {
           downloadFor={(img) => urls.user.imageDownload(assignmentId, img.id)}
         />
       )}
+      {q.data && <Pagination page={page} pageSize={q.data.pageSize} total={q.data.total} onChange={setPage} />}
     </Modal>
   );
 }

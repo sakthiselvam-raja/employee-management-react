@@ -7,7 +7,7 @@ import AssignmentForm, { takenOn } from '../../components/AssignmentForm';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import { AssignmentDetailModal, EditAssignmentModal, FolderImagesModal, SplitFolderModal } from '../../components/AdminModals';
 import {
-  Badge, Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
+  Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
 } from '../../components/ui';
 import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
@@ -29,7 +29,7 @@ function Coverage({ folder, ranges }) {
             width: `${((r.endPosition - r.startPosition + 1) / folder.imageCount) * 100}%`,
             background: colorFor(r.userId),
           }}
-          title={`${r.userName}: ${rangeLabel(r)}`}
+          title={rangeLabel(r)}
         />
       ))}
     </div>
@@ -144,16 +144,6 @@ export default function UploadDetailPage() {
                       </div>
                     </div>
                     <div className="mt-3"><Coverage folder={f} ranges={taken} /></div>
-                    {taken.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {taken.map((r) => (
-                          <button key={r.id} type="button" onClick={() => setDetailId(r.assignmentId)} className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2 py-0.5 text-xs hover:bg-slate-50">
-                            <span className="h-2 w-2 rounded-full" style={{ background: colorFor(r.userId) }} />
-                            {r.userName} · {rangeLabel(r)} <StatusBadge status={r.status} />
-                          </button>
-                        ))}
-                      </div>
-                    )}
                   </li>
                 );
               })}
@@ -165,7 +155,6 @@ export default function UploadDetailPage() {
             {u.excelFiles.length === 0 && <EmptyState title="No Excel files in this ZIP" icon="📊" />}
             <ul className="divide-y divide-slate-100">
               {u.excelFiles.map((e) => {
-                const on = e.assignedTo.filter((a) => a.workDate === date);
                 return (
                   <li key={e.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">
@@ -173,11 +162,6 @@ export default function UploadDetailPage() {
                       <p className="text-xs text-slate-500">
                         {formatBytes(e.sizeBytes)}{e.sheetNames.length > 0 && ` · ${e.sheetNames.length} sheet(s): ${e.sheetNames.join(', ')}`}
                       </p>
-                      {on.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {on.map((a) => <Badge key={a.assignmentId} tone="brand">{a.userName}</Badge>)}
-                        </div>
-                      )}
                     </div>
                     <div className="flex shrink-0 gap-2">
                       <Button size="sm" variant="ghost" onClick={() => setPreview(e)}>Preview</Button>

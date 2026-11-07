@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, urls } from '../api/endpoints';
 import { errorMessage, fileUrl } from '../api/client';
 import { useToast } from './Toast';
@@ -7,7 +7,7 @@ import ImageGallery from './ImageGallery';
 import ExcelPreviewModal from './ExcelPreviewModal';
 import AssignmentForm from './AssignmentForm';
 import {
-  Badge, Button, ErrorBox, LinkButton, Modal, PageLoader, STATUS_OPTIONS, StatusBadge, statusLabel,
+  Badge, Button, ErrorBox, LinkButton, Modal, PageLoader, Pagination, STATUS_OPTIONS, StatusBadge, statusLabel,
 } from './ui';
 import { formatBytes, formatDateTime, formatWorkDate, rangeLabel, splitEvenly, freeRanges } from '../utils/format';
 import { takenOn } from './AssignmentForm';
@@ -15,16 +15,21 @@ import { userMatches } from './UserPicker';
 
 /** Browse images of a folder (optionally only a range) as admin */
 export function FolderImagesModal({ target, onClose }) {
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 24;
+  useEffect(() => { setPage(1); }, [target?.folderId, target?.from, target?.to]);
   const q = useQuery({
-    queryKey: ['folderImages', target?.folderId, target?.from, target?.to],
-    queryFn: () => adminApi.folderImages(target.folderId, target.from, target.to),
+    queryKey: ['folderImages', target?.folderId, target?.from, target?.to, page],
+    queryFn: () => adminApi.folderImages(target.folderId, target.from, target.to, page, PAGE_SIZE),
     enabled: Boolean(target),
+    placeholderData: keepPreviousData,
   });
   return (
     <Modal open={Boolean(target)} onClose={onClose} size="full" title={target?.title || 'Images'}>
       {q.isLoading && <PageLoader />}
       {q.isError && <ErrorBox error={q.error} />}
       {q.data && <ImageGallery images={q.data.images} srcFor={(i) => urls.admin.image(i.id)} downloadFor={(i) => urls.admin.imageDownload(i.id)} />}
+      {q.data && <Pagination page={page} pageSize={q.data.pageSize} total={q.data.total} onChange={setPage} />}
     </Modal>
   );
 }

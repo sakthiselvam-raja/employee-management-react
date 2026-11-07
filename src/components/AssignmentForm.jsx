@@ -132,14 +132,12 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
         ) : (
           <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
             {upload.excelFiles.map((e) => {
-              const others = e.assignedTo.filter((a) => a.workDate === workDate && a.assignmentId !== initial?.id);
               return (
                 <label key={e.id} className={cx('flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50', excelIds.has(e.id) && 'bg-brand-50/60')}>
                   <input type="checkbox" className="mt-0.5 accent-brand-700" checked={excelIds.has(e.id)} onChange={() => toggleExcel(e.id)} />
                   <span className="min-w-0 text-sm">
                     <span className="block truncate text-slate-800">{e.relativePath}</span>
                     {e.sheetNames.length > 0 && <span className="block truncate text-xs text-slate-500">Sheets: {e.sheetNames.join(', ')}</span>}
-                    {others.length > 0 && <span className="block text-xs text-amber-700">Also with: {others.map((a) => a.userName).join(', ')}</span>}
                   </span>
                 </label>
               );
