@@ -6,6 +6,7 @@ import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import { AssignmentDetailModal, EditAssignmentModal } from '../../components/AdminModals';
 import { RemoteUserSelect } from '../../components/UserPicker';
+import RefreshButton from '../../components/RefreshButton';
 import {
   Button, Card, ConfirmModal, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, STATUS_OPTIONS, StatusBadge, statusLabel,
 } from '../../components/ui';
@@ -96,7 +97,11 @@ export default function AssignmentsPage() {
 
   return (
     <>
-      <PageHeader title="Assignments" description="Day-wise work given to users. Change status, reassign, download or delete." />
+      <PageHeader
+        title="Assignments"
+        description="Day-wise work given to users. Change status, reassign, download or delete."
+        actions={<RefreshButton onClick={() => q.refetch()} loading={q.isFetching} />}
+      />
 
       <Card bodyClass="">
         <div className="flex flex-wrap items-end gap-3 border-b border-slate-100 p-4">

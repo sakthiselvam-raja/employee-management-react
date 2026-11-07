@@ -4,6 +4,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
+import RefreshButton from '../../components/RefreshButton';
 import { Card, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, StatCard } from '../../components/ui';
 import { formatDateTime, formatWorkDate, todayISO } from '../../utils/format';
 
@@ -51,7 +52,12 @@ export default function AdminDashboard() {
       <PageHeader
         title="Dashboard"
         description={`Work status for ${formatWorkDate(date)}`}
-        actions={<input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setPage(1); } }} />}
+        actions={(
+          <>
+            <input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setPage(1); } }} />
+            <RefreshButton onClick={() => { q.refetch(); subQ.refetch(); }} loading={q.isFetching || subQ.isFetching} />
+          </>
+        )}
       />
 
       {q.isLoading && <PageLoader />}
