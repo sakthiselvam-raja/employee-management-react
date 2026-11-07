@@ -4,23 +4,24 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { userApi, urls } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
-import ImageGallery from '../../components/ImageGallery';
+import ImageGallery, { ImagePager, pageImages } from '../../components/ImageGallery';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import {
-  Button, Card, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, Pagination, StatusBadge,
+  Button, Card, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, StatusBadge,
 } from '../../components/ui';
 import { formatBytes, formatDateTime, formatWorkDate, rangeLabel } from '../../utils/format';
 
 function RangeImagesModal({ assignmentId, range, onClose }) {
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 24;
+  const [pageSize, setPageSize] = useState(12);
   useEffect(() => { setPage(1); }, [range?.id]);
   const q = useQuery({
-    queryKey: ['rangeImages', assignmentId, range?.id, page],
-    queryFn: () => userApi.rangeImages(assignmentId, range.id, page, PAGE_SIZE),
+    queryKey: ['rangeImages', assignmentId, range?.id, page, pageSize],
+    queryFn: () => userApi.rangeImages(assignmentId, range.id, page, pageSize),
     enabled: Boolean(range),
     placeholderData: keepPreviousData,
   });
+  const { images, total } = pageImages(q.data, page, pageSize);
   return (
     <Modal open={Boolean(range)} onClose={onClose} size="full" title={range ? `${range.folderPath || '(root)'} · images ${rangeLabel(range)}` : ''}
       footer={range && <LinkButton variant="primary" href={fileUrl(urls.user.rangeZip(assignmentId, range.id))}>Download these {range.count} images (ZIP)</LinkButton>}
@@ -28,13 +29,15 @@ function RangeImagesModal({ assignmentId, range, onClose }) {
       {q.isLoading && <PageLoader />}
       {q.isError && <ErrorBox error={q.error} />}
       {q.data && (
-        <ImageGallery
-          images={q.data.images}
-          srcFor={(img) => urls.user.image(assignmentId, img.id)}
-          downloadFor={(img) => urls.user.imageDownload(assignmentId, img.id)}
-        />
+        <>
+          <ImageGallery
+            images={images}
+            srcFor={(img) => urls.user.image(assignmentId, img.id)}
+            downloadFor={(img) => urls.user.imageDownload(assignmentId, img.id)}
+          />
+          <ImagePager page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1); }} />
+        </>
       )}
-      {q.data && <Pagination page={page} pageSize={q.data.pageSize} total={q.data.total} onChange={setPage} />}
     </Modal>
   );
 }

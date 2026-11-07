@@ -73,3 +73,42 @@ export default function ImageGallery({ images, srcFor, downloadFor }) {
     </>
   );
 }
+
+export const IMAGE_PAGE_SIZES = [12, 24, 48, 100];
+
+/**
+ * Works with a paginated API response ({ images, total }). If the server returned every image
+ * (no `total`), the page is cut here instead, so paging works either way.
+ */
+export function pageImages(data, page, pageSize) {
+  if (!data) return { images: [], total: 0 };
+  if (typeof data.total === 'number') return { images: data.images, total: data.total };
+  return { images: data.images.slice((page - 1) * pageSize, page * pageSize), total: data.images.length };
+}
+
+/** "Showing 1–12 of 20 images" + page size + First / Previous / Next / Last. */
+export function ImagePager({ page, pageSize, total, onPage, onPageSize }) {
+  if (!total) return null;
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  const from = (page - 1) * pageSize + 1;
+  const to = Math.min(page * pageSize, total);
+  const btn = 'rounded-md border border-slate-300 bg-white px-2.5 py-1 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-40';
+  return (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm text-slate-600">
+      <span>Showing {from}–{to} of {total} images</span>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex items-center gap-1.5 text-xs">
+          Per page
+          <select className="rounded-md border border-slate-300 bg-white px-1.5 py-1 text-sm" value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))}>
+            {IMAGE_PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </label>
+        <button type="button" className={btn} disabled={page <= 1} onClick={() => onPage(1)}>« First</button>
+        <button type="button" className={btn} disabled={page <= 1} onClick={() => onPage(page - 1)}>‹ Previous</button>
+        <span className="px-1">Page {page} of {pages}</span>
+        <button type="button" className={btn} disabled={page >= pages} onClick={() => onPage(page + 1)}>Next ›</button>
+        <button type="button" className={btn} disabled={page >= pages} onClick={() => onPage(pages)}>Last »</button>
+      </div>
+    </div>
+  );
+}

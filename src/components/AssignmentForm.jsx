@@ -4,7 +4,7 @@ import { adminApi } from '../api/endpoints';
 import { useToast } from './Toast';
 import { Button, ErrorBox, Field, cx } from './ui';
 import { folderLabel, freeRanges, rangeLabel, todayISO } from '../utils/format';
-import { RemoteUserSelect, textMatches } from './UserPicker';
+import { RemoteUserSelect } from './UserPicker';
 
 let rowKey = 1;
 const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '' });
@@ -29,37 +29,59 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
   const [excelIds, setExcelIds] = useState(new Set());
   const [rows, setRows] = useState([]);
   const [notes, setNotes] = useState('');
-  const [folderQ, setFolderQ] = useState('');
+  const [submitted, setSubmitted] = useState(false); // show validation messages after the first submit
 
   useEffect(() => {
     if (initial) {
       setUserId(String(initial.user.id));
       setWorkDate(initial.workDate);
       setExcelIds(new Set(initial.excelFiles.map((e) => e.id)));
-      setRows(initial.imageRanges.map((r) => newRow({ imageFolderId: r.folderId, startPosition: r.startPosition, endPosition: r.endPosition })));
+      const existing = initial.imageRanges.map((r) => newRow({ imageFolderId: r.folderId, startPosition: r.startPosition, endPosition: r.endPosition }));
+      setRows(existing.length || !upload.imageFolders.length ? existing : [newRow()]);
       setNotes(initial.adminNotes || '');
     } else {
       setUserId('');
       setExcelIds(new Set());
-      setRows(prefill ? [newRow(prefill)] : []);
+      setRows(prefill ? [newRow(prefill)] : (upload.imageFolders.length ? [newRow()] : []));
       setNotes('');
       if (defaultDate) setWorkDate(defaultDate);
     }
+    setSubmitted(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initial, prefill, defaultDate]);
 
   const folderMap = useMemo(() => new Map(upload.imageFolders.map((f) => [f.id, f])), [upload]);
-  const visibleFolders = useMemo(
-    () => upload.imageFolders.filter((f) => textMatches(folderLabel(f), folderQ)),
-    [upload, folderQ],
-  );
+  const addRange = () => setRows((rs) => [...rs, newRow()]);
 
-  const addRange = () => {
-    // when the folder search narrows down to exactly one folder, pre-select it
-    const only = folderQ.trim() && visibleFolders.length === 1 ? visibleFolders[0] : null;
-    if (!only) { setRows((rs) => [...rs, newRow()]); return; }
-    const gap = freeRanges(only.imageCount, takenOn(only, workDate, initial?.id))[0];
-    setRows((rs) => [...rs, newRow({ imageFolderId: only.id, startPosition: gap ? gap.startPosition : 1, endPosition: gap ? gap.endPosition : only.imageCount })]);
-  };
+  /** Validate every range row. A completely empty row is ignored (Excel-only assignments are allowed). */
+  const validation = useMemo(() => {
+    const rowErr = new Map();
+    const valid = [];
+    rows.forEach((r) => {
+      const untouched = !r.imageFolderId && r.startPosition === '' && r.endPosition === '';
+      if (untouched) return;
+      const folder = folderMap.get(Number(r.imageFolderId));
+      const start = Number(r.startPosition);
+      const end = Number(r.endPosition);
+      let msg = '';
+      if (!folder) msg = 'Choose a folder.';
+      else if (r.startPosition === '' || r.endPosition === '') msg = 'Enter both From and To image numbers.';
+      else if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < 1) msg = 'Image numbers must be whole numbers of 1 or more.';
+      else if (start > end) msg = '“From” cannot be greater than “To”.';
+      else if (end > folder.imageCount) msg = `This folder has only ${folder.imageCount} images.`;
+      else {
+        const clash = takenOn(folder, workDate, initial?.id).find((t) => start <= t.endPosition && t.startPosition <= end);
+        if (clash) msg = `Images ${rangeLabel(clash)} are already assigned on this date.`;
+        else if (valid.some((v) => v.folderId === folder.id && start <= v.end && v.start <= end)) msg = 'This range overlaps another range in this form.';
+      }
+      if (msg) rowErr.set(r.key, msg);
+      else valid.push({ folderId: folder.id, start, end });
+    });
+    const formErr = !rowErr.size && !excelIds.size && !valid.length
+      ? 'Select at least one Excel sheet, or enter an image range (folder, From and To).'
+      : '';
+    return { rowErr, formErr };
+  }, [rows, excelIds, workDate, folderMap, initial]);
 
   const save = useMutation({
     mutationFn: () => {
@@ -83,8 +105,9 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       if (!editing) {
         setUserId('');
         setExcelIds(new Set());
-        setRows([]);
+        setRows(upload.imageFolders.length ? [newRow()] : []);
         setNotes('');
+        setSubmitted(false);
       }
       onDone?.();
     },
@@ -112,7 +135,13 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
   return (
     <form
       className="space-y-5"
-      onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+      noValidate
+      onSubmit={(e) => {
+        e.preventDefault();
+        setSubmitted(true);
+        if (validation.rowErr.size || validation.formErr) return;
+        save.mutate();
+      }}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -151,24 +180,8 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
           <p className="text-sm font-medium text-slate-700">Image ranges</p>
           <Button size="sm" variant="secondary" onClick={addRange} disabled={!upload.imageFolders.length}>+ Add range</Button>
         </div>
-        {upload.imageFolders.length > 0 && (
-          <div className="mb-2">
-            <input
-              type="search"
-              className="input"
-              placeholder="Search folder name…"
-              value={folderQ}
-              onChange={(e) => setFolderQ(e.target.value)}
-            />
-            {folderQ.trim() && (
-              <p className="mt-1 text-xs text-slate-500">
-                {visibleFolders.length} of {upload.imageFolders.length} folders match
-                {visibleFolders.length === 1 && ' — “+ Add range” will pick it for you'}
-              </p>
-            )}
-          </div>
-        )}
         {rows.length === 0 && <p className="text-sm text-slate-500">{upload.imageFolders.length ? 'No image range added.' : 'This ZIP has no image folders.'}</p>}
+        {rows.length > 0 && <p className="mb-2 text-xs text-slate-500">Leave the range empty to assign only Excel sheets.</p>}
         <div className="space-y-2">
           {rows.map((r) => {
             const folder = folderMap.get(Number(r.imageFolderId));
@@ -177,21 +190,20 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
               <div key={r.key} className="rounded-lg border border-slate-200 p-3">
                 <div className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_auto] sm:items-end">
                   <Field label="Folder">
-                    <select className="input" value={r.imageFolderId} onChange={(e) => updateRow(r.key, { imageFolderId: e.target.value })} required>
+                    <select className="input" value={r.imageFolderId} onChange={(e) => updateRow(r.key, { imageFolderId: e.target.value })}>
                       <option value="">Choose folder…</option>
-                      {upload.imageFolders
-                        .filter((f) => textMatches(folderLabel(f), folderQ) || String(f.id) === String(r.imageFolderId))
-                        .map((f) => <option key={f.id} value={f.id}>{folderLabel(f)} ({f.imageCount} images)</option>)}
+                      {upload.imageFolders.map((f) => <option key={f.id} value={f.id}>{folderLabel(f)} ({f.imageCount} images)</option>)}
                     </select>
                   </Field>
                   <Field label="From">
-                    <input type="number" className="input" min={1} max={folder?.imageCount} value={r.startPosition} onChange={(e) => updateRow(r.key, { startPosition: e.target.value })} required />
+                    <input type="number" className="input" min={1} max={folder?.imageCount} value={r.startPosition} onChange={(e) => updateRow(r.key, { startPosition: e.target.value })} />
                   </Field>
                   <Field label="To">
-                    <input type="number" className="input" min={1} max={folder?.imageCount} value={r.endPosition} onChange={(e) => updateRow(r.key, { endPosition: e.target.value })} required />
+                    <input type="number" className="input" min={1} max={folder?.imageCount} value={r.endPosition} onChange={(e) => updateRow(r.key, { endPosition: e.target.value })} />
                   </Field>
-                  <Button variant="subtleDanger" onClick={() => setRows((rs) => rs.filter((x) => x.key !== r.key))}>Remove</Button>
+                  <Button variant="subtleDanger" onClick={() => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((x) => x.key !== r.key)))}>{rows.length === 1 ? 'Clear' : 'Remove'}</Button>
                 </div>
+                {submitted && validation.rowErr.get(r.key) && <p className="mt-2 text-xs font-medium text-red-600">{validation.rowErr.get(r.key)}</p>}
                 {folder && (
                   <p className="mt-2 text-xs text-slate-500">
                     {gaps.length
@@ -211,6 +223,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
         <textarea className="input min-h-20" value={notes} onChange={(e) => setNotes(e.target.value)} maxLength={2000} />
       </Field>
 
+      {submitted && validation.formErr && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{validation.formErr}</p>}
       {save.isError && <ErrorBox error={save.error} />}
 
       <div className="flex justify-end gap-2">

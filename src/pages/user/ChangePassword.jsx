@@ -34,7 +34,7 @@ export default function ChangePasswordButton() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} className="hidden rounded-lg px-2 py-1.5 text-sm text-slate-600 hover:bg-slate-100 sm:block">
+      <button type="button" onClick={() => setOpen(true)} className="hidden rounded-lg px-2.5 py-1.5 text-sm font-medium text-white/90 hover:bg-white/15 hover:text-white sm:block">
         Change password
       </button>
       <Modal

@@ -3,7 +3,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { adminApi, urls } from '../api/endpoints';
 import { errorMessage, fileUrl } from '../api/client';
 import { useToast } from './Toast';
-import ImageGallery from './ImageGallery';
+import ImageGallery, { ImagePager, pageImages } from './ImageGallery';
 import ExcelPreviewModal from './ExcelPreviewModal';
 import AssignmentForm from './AssignmentForm';
 import {
@@ -16,20 +16,25 @@ import { userMatches } from './UserPicker';
 /** Browse images of a folder (optionally only a range) as admin */
 export function FolderImagesModal({ target, onClose }) {
   const [page, setPage] = useState(1);
-  const PAGE_SIZE = 24;
+  const [pageSize, setPageSize] = useState(12);
   useEffect(() => { setPage(1); }, [target?.folderId, target?.from, target?.to]);
   const q = useQuery({
-    queryKey: ['folderImages', target?.folderId, target?.from, target?.to, page],
-    queryFn: () => adminApi.folderImages(target.folderId, target.from, target.to, page, PAGE_SIZE),
+    queryKey: ['folderImages', target?.folderId, target?.from, target?.to, page, pageSize],
+    queryFn: () => adminApi.folderImages(target.folderId, target.from, target.to, page, pageSize),
     enabled: Boolean(target),
     placeholderData: keepPreviousData,
   });
+  const { images, total } = pageImages(q.data, page, pageSize);
   return (
     <Modal open={Boolean(target)} onClose={onClose} size="full" title={target?.title || 'Images'}>
       {q.isLoading && <PageLoader />}
       {q.isError && <ErrorBox error={q.error} />}
-      {q.data && <ImageGallery images={q.data.images} srcFor={(i) => urls.admin.image(i.id)} downloadFor={(i) => urls.admin.imageDownload(i.id)} />}
-      {q.data && <Pagination page={page} pageSize={q.data.pageSize} total={q.data.total} onChange={setPage} />}
+      {q.data && (
+        <>
+          <ImageGallery images={images} srcFor={(i) => urls.admin.image(i.id)} downloadFor={(i) => urls.admin.imageDownload(i.id)} />
+          <ImagePager page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1); }} />
+        </>
+      )}
     </Modal>
   );
 }
@@ -40,8 +45,19 @@ export function AssignmentDetailModal({ id, onClose, onEdit }) {
   const toast = useToast();
   const [preview, setPreview] = useState(null);
   const [browse, setBrowse] = useState(null);
-  const q = useQuery({ queryKey: ['assignment', id], queryFn: () => adminApi.assignment(id), enabled: Boolean(id) });
+  const [subPage, setSubPage] = useState(1);
+  const SUB_SIZE = 5;
+  useEffect(() => { setSubPage(1); }, [id]);
+  const q = useQuery({
+    queryKey: ['assignment', id, subPage],
+    queryFn: () => adminApi.assignment(id, subPage, SUB_SIZE),
+    enabled: Boolean(id),
+    placeholderData: keepPreviousData,
+  });
   const a = q.data?.assignment;
+  // server paginates the submissions; if it returned all of them, cut the page here
+  const subTotal = q.data ? (q.data.submissionTotal ?? q.data.submissions.length) : 0;
+  const subRows = q.data ? (q.data.submissionTotal !== undefined ? q.data.submissions : q.data.submissions.slice((subPage - 1) * SUB_SIZE, subPage * SUB_SIZE)) : [];
 
   const status = useMutation({
     mutationFn: (s) => adminApi.setAssignmentStatus(id, s),
@@ -115,10 +131,10 @@ export function AssignmentDetailModal({ id, onClose, onEdit }) {
           </section>
 
           <section>
-            <h4 className="mb-2 font-semibold text-slate-800">User submissions ({q.data.submissions.length})</h4>
-            {q.data.submissions.length === 0 && <p className="text-slate-500">The user has not uploaded anything yet.</p>}
+            <h4 className="mb-2 font-semibold text-slate-800">User submissions ({subTotal})</h4>
+            {subTotal === 0 && <p className="text-slate-500">The user has not uploaded anything yet.</p>}
             <ul className="space-y-2">
-              {q.data.submissions.map((s) => (
+              {subRows.map((s) => (
                 <li key={s.id} className="rounded-lg border border-slate-200 px-3 py-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-xs text-slate-500">{formatDateTime(s.createdAt)} · {s.uploadedBy?.fullName} <Badge>{s.uploadedByRole === 'USER' ? 'User' : 'Admin'}</Badge></span>
@@ -135,6 +151,7 @@ export function AssignmentDetailModal({ id, onClose, onEdit }) {
                 </li>
               ))}
             </ul>
+            <Pagination page={subPage} pageSize={SUB_SIZE} total={subTotal} onChange={setSubPage} />
           </section>
         </div>
       )}
