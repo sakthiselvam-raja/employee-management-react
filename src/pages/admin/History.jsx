@@ -155,6 +155,12 @@ const actionLabels = {
   USER_PASSWORD_RESET: 'Password reset', PASSWORD_CHANGED: 'Password changed',
 };
 
+/**
+ * The "Activity log" tab is hidden for now. The backend keeps recording every action
+ * (logins, uploads, assignments, deletions…), so nothing is lost — set this to true to show the tab again.
+ */
+const SHOW_ACTIVITY_LOG = false;
+
 function ActivityTab() {
   const [page, setPage] = useState(1);
   const [action, setAction] = useState('');
@@ -202,12 +208,12 @@ export default function HistoryPage() {
         tabs={[
           { value: 'files', label: 'Upload history' },
           { value: 'assignments', label: 'Assignment history' },
-          { value: 'activity', label: 'Activity log' },
+          ...(SHOW_ACTIVITY_LOG ? [{ value: 'activity', label: 'Activity log' }] : []),
         ]}
       />
       {tab === 'files' && <FilesTab />}
       {tab === 'assignments' && <AssignmentsTab />}
-      {tab === 'activity' && <ActivityTab />}
+      {SHOW_ACTIVITY_LOG && tab === 'activity' && <ActivityTab />}
     </>
   );
 }

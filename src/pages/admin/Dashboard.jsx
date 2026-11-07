@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import RefreshButton from '../../components/RefreshButton';
+import StorageUsageCard from '../../components/StorageUsageCard';
 import { Card, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, StatCard } from '../../components/ui';
 import { formatDateTime, formatWorkDate, todayISO } from '../../utils/format';
 
@@ -20,6 +21,7 @@ function ProgressBar({ p }) {
 }
 
 export default function AdminDashboard() {
+  const qc = useQueryClient();
   const [date, setDate] = useState(todayISO());
   const [page, setPage] = useState(1);
   const [subPage, setSubPage] = useState(1);
@@ -55,7 +57,7 @@ export default function AdminDashboard() {
         actions={(
           <>
             <input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setPage(1); } }} />
-            <RefreshButton onClick={() => { q.refetch(); subQ.refetch(); }} loading={q.isFetching || subQ.isFetching} />
+            <RefreshButton onClick={() => qc.invalidateQueries({ queryKey: ['dashboard'] })} loading={q.isFetching || subQ.isFetching} />
           </>
         )}
       />
@@ -73,6 +75,8 @@ export default function AdminDashboard() {
             <StatCard label="Processing" value={d.stats.PROCESSING} tone="sky" />
             <StatCard label="Completed" value={d.stats.COMPLETED} tone="green" />
           </div>
+
+          <StorageUsageCard />
 
           <div className="grid gap-6 xl:grid-cols-3">
             <Card

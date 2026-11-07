@@ -15,6 +15,7 @@ export const authApi = {
 export const adminApi = {
   dashboard: (date, params) => data(api.get('/admin/dashboard', { params: { date, ...params } })),
   dashboardSubmissions: (params) => data(api.get('/admin/dashboard/submissions', { params })),
+  dashboardStorage: () => data(api.get('/admin/dashboard/storage')),
 
   users: (params) => data(api.get('/admin/users', { params })).then((d) => d.users),
   /** paginated: { users, total, page, limit, pages } — pass page + limit */
