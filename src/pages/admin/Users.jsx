@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import {
-  Badge, Button, Card, ConfirmModal, EmptyState, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader,
+  Badge, Button, Card, ConfirmModal, EmptyState, ErrorBox, Field, LinkButton, Modal, PageHeader, PageLoader, Pagination,
 } from '../../components/ui';
 import { formatDateTime } from '../../utils/format';
 
@@ -178,13 +178,25 @@ export default function UsersPage() {
   const [editing, setEditing] = useState(null); // null closed, {} new, user edit
   const [bulkOpen, setBulkOpen] = useState(false);
   const [confirm, setConfirm] = useState(null); // { type, user }
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   useEffect(() => {
-    const t = setTimeout(() => setDebounced(search), 250);
+    const t = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(t);
   }, [search]);
 
-  const q = useQuery({ queryKey: ['users', debounced, status], queryFn: () => adminApi.users({ search: debounced, status }) });
+  const q = useQuery({
+    queryKey: ['users', 'list', debounced, status, page],
+    queryFn: () => adminApi.usersPage({ search: debounced || undefined, status, page, limit: PAGE_SIZE, sort: 'recent' }),
+    placeholderData: keepPreviousData,
+  });
+  const rows = q.data?.users;
+
+  // after deleting the last user on a page, step back
+  useEffect(() => {
+    if (q.data && page > q.data.pages) setPage(q.data.pages);
+  }, [q.data, page]);
 
   const action = useMutation({
     mutationFn: ({ type, user }) => {
@@ -229,7 +241,7 @@ export default function UsersPage() {
       <Card bodyClass="">
         <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row">
           <input className="input sm:max-w-xs" placeholder="Search name, employee ID, email…" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <select className="input sm:w-40" value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select className="input sm:w-40" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
             <option value="all">All users</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -238,11 +250,11 @@ export default function UsersPage() {
 
         {q.isLoading && <PageLoader />}
         {q.isError && <div className="p-4"><ErrorBox error={q.error} /></div>}
-        {q.data?.length === 0 && (
+        {rows?.length === 0 && (
           <EmptyState icon="👥" title={debounced ? 'No users match your search' : 'No users yet'} description={debounced ? undefined : 'Add your first employee to start assigning work.'} />
         )}
 
-        {q.data?.length > 0 && (
+        {rows?.length > 0 && (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50/60">
@@ -252,7 +264,7 @@ export default function UsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {q.data.map((u) => (
+                {rows.map((u) => (
                   <tr key={u.id} className={u.isActive ? '' : 'bg-slate-50/70 text-slate-500'}>
                     <td className="td font-mono text-xs">{u.employeeId}</td>
                     <td className="td font-medium text-slate-800">{u.fullName}</td>
@@ -276,6 +288,7 @@ export default function UsersPage() {
             </table>
           </div>
         )}
+        {q.data && <Pagination page={page} pageSize={q.data.limit} total={q.data.total} onChange={setPage} />}
       </Card>
 
       <BulkUploadModal open={bulkOpen} onClose={() => setBulkOpen(false)} />

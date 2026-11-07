@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
 import { useToast } from '../../components/Toast';
 import { AssignmentDetailModal, EditAssignmentModal } from '../../components/AdminModals';
-import UserSelect, { userMatches } from '../../components/UserPicker';
+import { RemoteUserSelect } from '../../components/UserPicker';
 import {
-  Button, Card, ConfirmModal, EmptyState, ErrorBox, PageHeader, PageLoader, STATUS_OPTIONS, StatusBadge, statusLabel,
+  Button, Card, ConfirmModal, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, STATUS_OPTIONS, StatusBadge, statusLabel,
 } from '../../components/ui';
 import { formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
 
@@ -20,6 +20,14 @@ export default function AssignmentsPage() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
   const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const mode = params.get('mode') || 'day'; // day | range
   const filters = {
@@ -35,17 +43,33 @@ export default function AssignmentsPage() {
     if (v) next.set(k, v); else next.delete(k);
     setParams(next, { replace: true });
     setSelected(new Set());
+    setPage(1);
   };
 
   const apiParams = useMemo(() => {
-    const p = { status: filters.status || undefined, userId: filters.userId || undefined, zipUploadId: filters.zipUploadId || undefined };
+    const p = {
+      status: filters.status || undefined,
+      userId: filters.userId || undefined,
+      zipUploadId: filters.zipUploadId || undefined,
+      search: debounced || undefined,
+      page,
+      pageSize: PAGE_SIZE,
+    };
     if (mode === 'day') p.date = filters.date;
     else { p.from = filters.from || undefined; p.to = filters.to || undefined; }
     return p;
-  }, [mode, filters.date, filters.from, filters.to, filters.status, filters.userId, filters.zipUploadId]);
+  }, [mode, filters.date, filters.from, filters.to, filters.status, filters.userId, filters.zipUploadId, debounced, page]);
 
-  const q = useQuery({ queryKey: ['assignments', apiParams], queryFn: () => adminApi.assignments(apiParams) });
-  const usersQ = useQuery({ queryKey: ['users', '', 'all'], queryFn: () => adminApi.users({ status: 'all' }) });
+  const q = useQuery({
+    queryKey: ['assignments', apiParams],
+    queryFn: () => adminApi.assignmentsPage(apiParams),
+    placeholderData: keepPreviousData,
+  });
+
+  // after deleting the last row of a page, step back
+  useEffect(() => {
+    if (q.data && page > q.data.pages) setPage(q.data.pages);
+  }, [q.data, page]);
   const uploadsQ = useQuery({ queryKey: ['uploads'], queryFn: adminApi.uploads });
 
   const refresh = () => ['assignments', 'assignment', 'upload', 'uploads', 'dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
@@ -66,13 +90,8 @@ export default function AssignmentsPage() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  // text search (name / employee ID / email) — matched against the full users list
-  const matchIds = useMemo(
-    () => (search.trim() ? new Set((usersQ.data || []).filter((u) => userMatches(u, search)).map((u) => u.id)) : null),
-    [search, usersQ.data],
-  );
-  const list = useMemo(() => (q.data || []).filter((a) => !matchIds || matchIds.has(a.user.id)), [q.data, matchIds]);
-  const counts = list.reduce((c, a) => ({ ...c, [a.status]: (c[a.status] || 0) + 1 }), {});
+  const list = q.data?.assignments || [];
+  const counts = q.data?.counts || {};
   const allSelected = list.length > 0 && selected.size === list.length;
 
   return (
@@ -99,12 +118,12 @@ export default function AssignmentsPage() {
             <option value="">All statuses</option>
             {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
           </select>
-          <UserSelect
+          <RemoteUserSelect
             className="w-72"
-            users={usersQ.data || []}
+            status="all"
             value={filters.userId}
             onChange={(id) => setFilter('userId', id)}
-            emptyLabel="All users"
+            placeholder="All users — type to pick one"
           />
           <input
             type="search"
@@ -121,7 +140,7 @@ export default function AssignmentsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-2.5 text-sm">
-          <span className="text-slate-600">{list.length} assignment(s){search.trim() && ` matching “${search.trim()}”`}</span>
+          <span className="text-slate-600">{q.data?.total ?? 0} assignment(s){debounced && ` matching “${debounced}”`}</span>
           {STATUS_OPTIONS.map((s) => counts[s] ? <span key={s} className="flex items-center gap-1"><StatusBadge status={s} /> {counts[s]}</span> : null)}
           {selected.size > 0 && (
             <span className="ml-auto flex items-center gap-2">
@@ -189,6 +208,7 @@ export default function AssignmentsPage() {
             </table>
           </div>
         )}
+        {q.data && <Pagination page={page} pageSize={q.data.pageSize} total={q.data.total} onChange={(n) => { setPage(n); setSelected(new Set()); }} />}
       </Card>
 
       <AssignmentDetailModal id={detailId} onClose={() => setDetailId(null)} onEdit={(a) => { setDetailId(null); setEditing(a); }} />

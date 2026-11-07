@@ -1,13 +1,13 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
 import AssignmentForm, { takenOn } from '../../components/AssignmentForm';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import { AssignmentDetailModal, EditAssignmentModal, FolderImagesModal, SplitFolderModal } from '../../components/AdminModals';
 import {
-  Badge, Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, StatusBadge,
+  Badge, Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
 } from '../../components/ui';
 import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
@@ -41,6 +41,8 @@ export default function UploadDetailPage() {
   const navigate = useNavigate();
   const formRef = useRef(null);
   const [date, setDate] = useState(todayISO());
+  const [dayPage, setDayPage] = useState(1);
+  const DAY_PAGE_SIZE = 10;
   const [prefill, setPrefill] = useState(null);
   const [preview, setPreview] = useState(null);
   const [browse, setBrowse] = useState(null);
@@ -52,10 +54,19 @@ export default function UploadDetailPage() {
 
   const q = useQuery({ queryKey: ['upload', Number(id)], queryFn: () => adminApi.upload(id) });
   const usersQ = useQuery({ queryKey: ['users', '', 'active'], queryFn: () => adminApi.users({ status: 'active' }) });
-  const assignQ = useQuery({ queryKey: ['assignments', { zipUploadId: Number(id) }], queryFn: () => adminApi.assignments({ zipUploadId: id }) });
+  // only the selected date's assignments for this ZIP, one page at a time
+  const assignQ = useQuery({
+    queryKey: ['assignments', { zipUploadId: Number(id), date, page: dayPage }],
+    queryFn: () => adminApi.assignmentsPage({ zipUploadId: id, date, page: dayPage, pageSize: DAY_PAGE_SIZE }),
+    placeholderData: keepPreviousData,
+  });
 
   const u = q.data;
-  const dayAssignments = useMemo(() => (assignQ.data || []).filter((a) => a.workDate === date), [assignQ.data, date]);
+  const dayAssignments = assignQ.data?.assignments || [];
+  const dayTotal = assignQ.data?.total ?? 0;
+  useEffect(() => {
+    if (assignQ.data && dayPage > assignQ.data.pages) setDayPage(assignQ.data.pages);
+  }, [assignQ.data, dayPage]);
 
   if (q.isLoading) return <PageLoader />;
   if (q.isError) return <ErrorBox error={q.error} />;
@@ -99,8 +110,8 @@ export default function UploadDetailPage() {
 
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
         <span className="text-sm font-medium text-brand-900">Working date</span>
-        <input type="date" className="input w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />
-        <span className="text-sm text-brand-900">{dayAssignments.length} assignment(s) on {formatWorkDate(date)} — coverage below is for this date.</span>
+        <input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setDayPage(1); } }} />
+        <span className="text-sm text-brand-900">{dayTotal} assignment(s) on {formatWorkDate(date)} — coverage below is for this date.</span>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
@@ -211,6 +222,7 @@ export default function UploadDetailPage() {
                 </li>
               ))}
             </ul>
+            {assignQ.data && <Pagination page={dayPage} pageSize={assignQ.data.pageSize} total={assignQ.data.total} onChange={setDayPage} />}
           </Card>
         </div>
       </div>

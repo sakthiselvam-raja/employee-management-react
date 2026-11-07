@@ -164,13 +164,13 @@ export function RemoteUserSelect({
         autoComplete="off"
         className="input pr-8"
         disabled={disabled}
-        value={open ? query : (selected ? userLabel(selected) : '')}
+        value={open ? query : (selected ? userLabel(selected) : (value ? `User #${value}` : ''))}
         placeholder={placeholder}
         onFocus={() => { setOpen(true); setQuery(''); setPage(1); }}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
         onKeyDown={(e) => { if (e.key === 'Escape') { setOpen(false); setQuery(''); } if (e.key === 'Enter') e.preventDefault(); }}
       />
-      {selected && !disabled && (
+      {(selected || value) && !disabled && (
         <button type="button" aria-label="Clear selection" className="absolute top-1/2 right-2 -translate-y-1/2 rounded px-1 text-slate-400 hover:text-slate-700" onClick={() => choose(null)}>×</button>
       )}
 

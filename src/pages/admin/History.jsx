@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
 import {
@@ -96,30 +96,36 @@ function AssignmentsTab() {
   const [from, setFrom] = useState(thirtyDaysAgo);
   const [to, setTo] = useState('');
   const [status, setStatus] = useState('');
-  const params = { from: from || undefined, to: to || undefined, status: status || undefined };
-  const q = useQuery({ queryKey: ['assignments', 'history', params], queryFn: () => adminApi.assignments(params) });
+  const [page, setPage] = useState(1);
+  const params = { from: from || undefined, to: to || undefined, status: status || undefined, page, pageSize: 20 };
+  const q = useQuery({
+    queryKey: ['assignments', 'history', params],
+    queryFn: () => adminApi.assignmentsPage(params),
+    placeholderData: keepPreviousData,
+  });
+  const rows = q.data?.assignments;
 
   return (
     <Card bodyClass="">
       <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 p-4 text-sm">
-        <span className="text-slate-500">From</span><input type="date" className="input w-auto" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <span className="text-slate-500">to</span><input type="date" className="input w-auto" value={to} onChange={(e) => setTo(e.target.value)} />
-        <select className="input w-auto" value={status} onChange={(e) => setStatus(e.target.value)}>
+        <span className="text-slate-500">From</span><input type="date" className="input w-auto" value={from} onChange={(e) => { setFrom(e.target.value); setPage(1); }} />
+        <span className="text-slate-500">to</span><input type="date" className="input w-auto" value={to} onChange={(e) => { setTo(e.target.value); setPage(1); }} />
+        <select className="input w-auto" value={status} onChange={(e) => { setStatus(e.target.value); setPage(1); }}>
           <option value="">All statuses</option>
           {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{statusLabel(s)}</option>)}
         </select>
       </div>
       {q.isLoading && <PageLoader />}
       {q.isError && <div className="p-4"><ErrorBox error={q.error} /></div>}
-      {q.data?.length === 0 && <EmptyState title="No assignments in this period" />}
-      {q.data?.length > 0 && (
+      {rows?.length === 0 && <EmptyState title="No assignments in this period" />}
+      {rows?.length > 0 && (
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50/60">
               <tr><th className="th">Work date</th><th className="th">Assigned user</th><th className="th">ZIP</th><th className="th">Excel sheets</th><th className="th">Image folders / ranges</th><th className="th">Status</th><th className="th">Assigned</th><th className="th">Completed</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {q.data.map((a) => (
+              {rows.map((a) => (
                 <tr key={a.id}>
                   <td className="td whitespace-nowrap">{formatWorkDate(a.workDate)}</td>
                   <td className="td"><p className="font-medium">{a.user.fullName}</p><p className="text-xs text-slate-500">{a.user.employeeId} · {a.user.email}</p></td>
@@ -135,6 +141,7 @@ function AssignmentsTab() {
           </table>
         </div>
       )}
+      {q.data && <Pagination page={page} pageSize={q.data.pageSize} total={q.data.total} onChange={setPage} />}
     </Card>
   );
 }

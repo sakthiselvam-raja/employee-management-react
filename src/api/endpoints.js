@@ -13,7 +13,8 @@ export const authApi = {
 
 /* ---------- admin ---------- */
 export const adminApi = {
-  dashboard: (date) => data(api.get('/admin/dashboard', { params: { date } })),
+  dashboard: (date, params) => data(api.get('/admin/dashboard', { params: { date, ...params } })),
+  dashboardSubmissions: (params) => data(api.get('/admin/dashboard/submissions', { params })),
 
   users: (params) => data(api.get('/admin/users', { params })).then((d) => d.users),
   /** paginated: { users, total, page, limit, pages } — pass page + limit */
@@ -48,6 +49,8 @@ export const adminApi = {
   submissionPreview: (id) => data(api.get(`/admin/files/submissions/${id}/preview`)),
 
   assignments: (params) => data(api.get('/admin/assignments', { params })).then((d) => d.assignments),
+  /** paginated: pass page + pageSize -> { assignments, total, page, pageSize, pages, counts } */
+  assignmentsPage: (params) => data(api.get('/admin/assignments', { params })),
   assignment: (id) => data(api.get(`/admin/assignments/${id}`)),
   createAssignment: (body) => data(api.post('/admin/assignments', body)),
   updateAssignment: (id, body) => data(api.put(`/admin/assignments/${id}`, body)),

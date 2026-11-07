@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
-import { Card, EmptyState, ErrorBox, PageHeader, PageLoader, StatCard } from '../../components/ui';
+import { Card, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, StatCard } from '../../components/ui';
 import { formatDateTime, formatWorkDate, todayISO } from '../../utils/format';
 
 function ProgressBar({ p }) {
@@ -19,15 +19,37 @@ function ProgressBar({ p }) {
 
 export default function AdminDashboard() {
   const [date, setDate] = useState(todayISO());
-  const q = useQuery({ queryKey: ['dashboard', date], queryFn: () => adminApi.dashboard(date) });
+  const [page, setPage] = useState(1);
+  const [subPage, setSubPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debounced, setDebounced] = useState('');
+  const PAGE_SIZE = 15;
+  const SUB_SIZE = 8;
+
+  useEffect(() => {
+    const t = setTimeout(() => { setDebounced(search.trim()); setPage(1); }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const q = useQuery({
+    queryKey: ['dashboard', date, page, debounced],
+    queryFn: () => adminApi.dashboard(date, { page, pageSize: PAGE_SIZE, search: debounced || undefined }),
+    placeholderData: keepPreviousData,
+  });
+  const subQ = useQuery({
+    queryKey: ['dashboard', 'submissions', subPage],
+    queryFn: () => adminApi.dashboardSubmissions({ page: subPage, pageSize: SUB_SIZE }),
+    placeholderData: keepPreviousData,
+  });
   const d = q.data;
+  const subs = subQ.data;
 
   return (
     <>
       <PageHeader
         title="Dashboard"
         description={`Work status for ${formatWorkDate(date)}`}
-        actions={<input type="date" className="input w-auto" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} />}
+        actions={<input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setPage(1); } }} />}
       />
 
       {q.isLoading && <PageLoader />}
@@ -51,11 +73,14 @@ export default function AdminDashboard() {
               bodyClass=""
               actions={<Link to={`/admin/assignments?date=${date}`} className="link text-sm">Manage assignments →</Link>}
             >
+              <div className="border-b border-slate-100 p-3">
+                <input type="search" className="input sm:max-w-xs" placeholder="Search name, employee ID, email…" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
               {d.perUser.length === 0 ? (
                 <EmptyState
-                  title="Nothing assigned for this date"
-                  description="Open a ZIP upload and assign Excel sheets and image ranges to users."
-                  action={<Link to="/admin/uploads" className="link text-sm">Go to ZIP uploads</Link>}
+                  title={debounced ? 'No users match your search' : 'Nothing assigned for this date'}
+                  description={debounced ? undefined : 'Open a ZIP upload and assign Excel sheets and image ranges to users.'}
+                  action={debounced ? undefined : <Link to="/admin/uploads" className="link text-sm">Go to ZIP uploads</Link>}
                 />
               ) : (
                 <div className="overflow-x-auto">
@@ -78,11 +103,13 @@ export default function AdminDashboard() {
                   </table>
                 </div>
               )}
+              <Pagination page={page} pageSize={d.pageSize} total={d.perUserTotal} onChange={setPage} />
             </Card>
 
-            <Card title="Latest submissions" bodyClass="divide-y divide-slate-100">
-              {d.recentSubmissions.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-500">No user uploads yet.</p>}
-              {d.recentSubmissions.map((s) => (
+            <Card title="Latest submissions" bodyClass="">
+              {subs?.rows.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-500">No user uploads yet.</p>}
+              <div className="divide-y divide-slate-100">
+              {subs?.rows.map((s) => (
                 <div key={s.id} className="px-5 py-3">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -96,6 +123,8 @@ export default function AdminDashboard() {
                   <p className="mt-1 text-[11px] text-slate-400">{formatDateTime(s.createdAt)}</p>
                 </div>
               ))}
+              </div>
+              {subs && <Pagination page={subPage} pageSize={subs.pageSize} total={subs.total} onChange={setSubPage} />}
             </Card>
           </div>
         </div>
