@@ -3,8 +3,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../api/endpoints';
 import { useToast } from './Toast';
 import { Button, ErrorBox, Field, cx } from './ui';
-import { folderLabel, freeRanges, rangeLabel, todayISO } from '../utils/format';
+import { freeRanges, rangeLabel, todayISO } from '../utils/format';
 import { RemoteUserSelect } from './UserPicker';
+import FolderSelect from './FolderSelect';
 
 let rowKey = 1;
 const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '' });
@@ -188,20 +189,25 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
             const gaps = folder ? freeRanges(folder.imageCount, takenOn(folder, workDate, initial?.id)) : [];
             return (
               <div key={r.key} className="rounded-lg border border-slate-200 p-3">
-                <div className="grid gap-2 sm:grid-cols-[1fr_6rem_6rem_auto] sm:items-end">
-                  <Field label="Folder">
-                    <select className="input" value={r.imageFolderId} onChange={(e) => updateRow(r.key, { imageFolderId: e.target.value })}>
-                      <option value="">Choose folder…</option>
-                      {upload.imageFolders.map((f) => <option key={f.id} value={f.id}>{folderLabel(f)} ({f.imageCount} images)</option>)}
-                    </select>
-                  </Field>
-                  <Field label="From">
-                    <input type="number" className="input" min={1} max={folder?.imageCount} value={r.startPosition} onChange={(e) => updateRow(r.key, { startPosition: e.target.value })} />
-                  </Field>
-                  <Field label="To">
-                    <input type="number" className="input" min={1} max={folder?.imageCount} value={r.endPosition} onChange={(e) => updateRow(r.key, { endPosition: e.target.value })} />
-                  </Field>
-                  <Button variant="subtleDanger" onClick={() => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((x) => x.key !== r.key)))}>{rows.length === 1 ? 'Clear' : 'Remove'}</Button>
+                <div className="space-y-3">
+                  <div>
+                    <span className="mb-1 block text-sm font-medium text-slate-700">Folder</span>
+                    <FolderSelect
+                      folders={upload.imageFolders}
+                      value={r.imageFolderId}
+                      onChange={(v) => updateRow(r.key, { imageFolderId: v })}
+                      freeCount={(f) => f.imageCount - takenOn(f, workDate, initial?.id).reduce((n, t) => n + t.endPosition - t.startPosition + 1, 0)}
+                    />
+                  </div>
+                  <div className="flex items-end gap-2">
+                    <Field label="From" className="min-w-0 flex-1">
+                      <input type="number" className="input" min={1} max={folder?.imageCount} value={r.startPosition} onChange={(e) => updateRow(r.key, { startPosition: e.target.value })} />
+                    </Field>
+                    <Field label="To" className="min-w-0 flex-1">
+                      <input type="number" className="input" min={1} max={folder?.imageCount} value={r.endPosition} onChange={(e) => updateRow(r.key, { endPosition: e.target.value })} />
+                    </Field>
+                    <Button variant="subtleDanger" className="shrink-0" onClick={() => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((x) => x.key !== r.key)))}>{rows.length === 1 ? 'Clear' : 'Remove'}</Button>
+                  </div>
                 </div>
                 {submitted && validation.rowErr.get(r.key) && <p className="mt-2 text-xs font-medium text-red-600">{validation.rowErr.get(r.key)}</p>}
                 {folder && (

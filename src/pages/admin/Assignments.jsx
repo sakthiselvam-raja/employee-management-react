@@ -8,9 +8,9 @@ import { AssignmentDetailModal, EditAssignmentModal } from '../../components/Adm
 import { RemoteUserSelect } from '../../components/UserPicker';
 import RefreshButton from '../../components/RefreshButton';
 import {
-  Button, Card, ConfirmModal, EmptyState, ErrorBox, PageHeader, PageLoader, Pagination, STATUS_OPTIONS, StatusBadge, statusLabel,
+  Button, Card, ConfirmModal, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, STATUS_OPTIONS, StatusBadge, statusLabel,
 } from '../../components/ui';
-import { formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
+import { folderLabel, formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
 
 export default function AssignmentsPage() {
   const qc = useQueryClient();
@@ -100,7 +100,17 @@ export default function AssignmentsPage() {
       <PageHeader
         title="Assignments"
         description="Day-wise work given to users. Change status, reassign, download or delete."
-        actions={<RefreshButton onClick={() => q.refetch()} loading={q.isFetching} />}
+        actions={(
+          <>
+            <LinkButton
+              href={fileUrl(urls.admin.assignmentsExport({ ...apiParams, page: undefined, pageSize: undefined }))}
+              title="Download every assignment matching the current filters as an Excel file"
+            >
+              ⬇ Export Excel
+            </LinkButton>
+            <RefreshButton onClick={() => q.refetch()} loading={q.isFetching} />
+          </>
+        )}
       />
 
       <Card bodyClass="">
@@ -184,7 +194,11 @@ export default function AssignmentsPage() {
                     <td className="td max-w-xs">
                       <p className="truncate text-xs text-slate-500" title={a.zipUpload.originalName}>{a.zipUpload.originalName}</p>
                       {a.excelFiles.length > 0 && <p className="truncate text-xs" title={a.excelFiles.map((e) => e.relativePath).join('\n')}>📊 {a.excelFiles.map((e) => e.fileName).join(', ')}</p>}
-                      {a.imageRanges.length > 0 && <p className="truncate text-xs">🖼️ {a.imageRanges.map((r) => `${r.folderName} ${rangeLabel(r)}`).join(', ')} <span className="text-slate-400">({a.totalImages})</span></p>}
+                      {a.imageRanges.map((r) => (
+                        <p key={r.id} className="truncate text-xs" title={`${folderLabel(r)} · images ${rangeLabel(r)}`}>
+                          📁 <span className="font-medium text-slate-700">{folderLabel(r)}</span> <span className="text-slate-500">· {rangeLabel(r)} ({r.count})</span>
+                        </p>
+                      ))}
                     </td>
                     <td className="td">
                       <select

@@ -5,7 +5,7 @@ import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
 import AssignmentForm, { takenOn } from '../../components/AssignmentForm';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
-import { AssignmentDetailModal, EditAssignmentModal, FolderImagesModal, SplitFolderModal } from '../../components/AdminModals';
+import { AssignmentDetailModal, EditAssignmentModal } from '../../components/AdminModals';
 import {
   Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
 } from '../../components/ui';
@@ -45,8 +45,6 @@ export default function UploadDetailPage() {
   const DAY_PAGE_SIZE = 10;
   const [prefill, setPrefill] = useState(null);
   const [preview, setPreview] = useState(null);
-  const [browse, setBrowse] = useState(null);
-  const [splitFolder, setSplitFolder] = useState(null);
   const [detailId, setDetailId] = useState(null);
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -88,6 +86,7 @@ export default function UploadDetailPage() {
         description={`Uploaded ${formatDateTime(u.createdAt)} by ${u.uploadedBy.fullName} (${u.uploadedByRole === 'ADMIN' ? 'Admin' : 'User'})`}
         actions={(
           <>
+            <LinkButton variant="primary" href={fileUrl(urls.admin.uploadSubmissionsZip(u.id))}>Download submission files only</LinkButton>
             <LinkButton href={fileUrl(urls.admin.uploadZip(u.id))}>Download all + submissions</LinkButton>
             <Button variant="subtleDanger" onClick={() => setDeleting(true)}>Delete</Button>
           </>
@@ -138,8 +137,6 @@ export default function UploadDetailPage() {
                         <p className="text-xs text-slate-500">{f.imageCount} images · {assignedCount} assigned · {f.imageCount - assignedCount} free on this date</p>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setBrowse({ folderId: f.id, title: `${f.relativePath || '(root)'} — ${f.imageCount} images` })}>Browse</Button>
-                        <Button size="sm" variant="secondary" onClick={() => setSplitFolder(f)} disabled={assignedCount >= f.imageCount}>Split between users</Button>
                         <Button size="sm" onClick={() => quickAssign(f)} disabled={assignedCount >= f.imageCount}>Assign range</Button>
                       </div>
                     </div>
@@ -219,10 +216,6 @@ export default function UploadDetailPage() {
         queryFn={() => adminApi.excelPreview(preview.id)}
         downloadPath={preview && urls.admin.excel(preview.id)}
       />
-      <FolderImagesModal target={browse} onClose={() => setBrowse(null)} />
-      {splitFolder && usersQ.data && (
-        <SplitFolderModal key={`${splitFolder.id}-${date}`} upload={u} folder={splitFolder} date={date} users={usersQ.data} onClose={() => setSplitFolder(null)} />
-      )}
       <AssignmentDetailModal id={detailId} onClose={() => setDetailId(null)} onEdit={(a) => { setDetailId(null); setEditing(a); }} />
       <EditAssignmentModal assignment={editing} onClose={() => setEditing(null)} />
       {deleting && <DeleteUploadModal upload={u} onClose={() => setDeleting(false)} onDeleted={() => navigate('/admin/uploads')} />}

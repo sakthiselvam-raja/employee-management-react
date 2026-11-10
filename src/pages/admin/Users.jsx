@@ -60,7 +60,7 @@ function UserFormModal({ open, onClose, user }) {
         <Field label="Email ID" required><input className="input" type="email" value={form.email} onChange={set('email')} required /></Field>
         {!editing && (
           <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-900 sm:col-span-2">
-            The account is created with the default password <strong>ism@123</strong>. The user can change it after logging in.
+            The account is created with the default password <strong>ism@123</strong>.
           </p>
         )}
         {save.isError && <div className="sm:col-span-2"><ErrorBox error={save.error} /></div>}
@@ -292,7 +292,7 @@ export default function UsersPage() {
                     <td className="td">
                       <div className="flex flex-wrap justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>Edit</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'reset', user: u })}>Reset password</Button>
+                        {/* Reset password hidden (frontend only) */}
                         <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'toggle', user: u })}>{u.isActive ? 'Deactivate' : 'Activate'}</Button>
                         {u.assignmentCount === 0 && (
                           <Button size="sm" variant="subtleDanger" onClick={() => setConfirm({ type: 'delete', user: u })}>Delete</Button>

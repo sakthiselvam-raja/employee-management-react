@@ -93,6 +93,8 @@ export const userApi = {
 export const urls = {
   admin: {
     uploadZip: (id) => `/admin/uploads/${id}/download`,
+    uploadSubmissionsZip: (id) => `/admin/uploads/${id}/submissions-download`,
+    assignmentsExport: (params) => `/admin/assignments/export?${new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''))}`,
     image: (id) => `/admin/files/images/${id}`,
     imageDownload: (id) => `/admin/files/images/${id}?download=1`,
     excel: (id) => `/admin/files/excel/${id}/download`,
