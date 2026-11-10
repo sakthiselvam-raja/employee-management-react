@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useLogin, useMe } from '../hooks/useAuth';
 import { errorMessage } from '../api/client';
 import { Button, Field, PageLoader } from '../components/ui';
+import BrandLogo from '../components/BrandLogo';
 
 /** Separate login screens: /admin/login (role ADMIN) and /login (role USER). */
 export default function LoginPage({ role }) {
@@ -33,13 +34,8 @@ export default function LoginPage({ role }) {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
-      <div className={`relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex ${isAdmin ? 'bg-slate-900' : 'bg-brand-800'}`}>
-        <div className="flex items-center gap-2 font-semibold">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-white/15">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M5 7h14M5 12h14M5 17h9" /></svg>
-          </span>
-          ISM Work Assign
-        </div>
+      <div className={`relative hidden flex-col justify-between overflow-hidden p-10 text-white lg:flex ${isAdmin ? 'bg-[#0b1730]' : 'bg-gradient-to-br from-brand-900 via-brand-800 to-[#0b1730]'}`}>
+        <BrandLogo onDark className="self-start" />
         <div className="max-w-md">
           <h2 className="text-3xl leading-tight font-semibold">
             {isAdmin ? 'Upload batches, split the work, track every file.' : 'Your assigned sheets and images, all in one place.'}
@@ -54,9 +50,10 @@ export default function LoginPage({ role }) {
         <div className="pointer-events-none absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-white/5" />
       </div>
 
-      <div className="flex items-center justify-center px-4 py-12">
+      <div className="flex flex-col items-center justify-center bg-white px-4 py-12">
+        <BrandLogo className="mb-8 lg:hidden" />
         <form onSubmit={submit} className="w-full max-w-sm">
-          <p className={`mb-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isAdmin ? 'bg-slate-900 text-white' : 'bg-brand-50 text-brand-800'}`}>
+          <p className={`mb-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isAdmin ? 'bg-[#0b1730] text-white' : 'bg-brand-50 text-brand-800'}`}>
             {isAdmin ? 'Admin' : 'Employee'}
           </p>
           <h1 className="text-2xl font-semibold text-slate-900">{isAdmin ? 'Admin sign in' : 'Sign in to your tasks'}</h1>

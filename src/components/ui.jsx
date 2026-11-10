@@ -141,7 +141,7 @@ export function Card({ title, actions, children, className, bodyClass = 'p-5' })
   return (
     <section className={cx('card', className)}>
       {(title || actions) && (
-        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 px-5 py-3.5">
+        <header className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-5 py-3.5">
           {typeof title === 'string' ? <h2 className="font-semibold text-slate-900">{title}</h2> : title}
           {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
         </header>
@@ -153,16 +153,17 @@ export function Card({ title, actions, children, className, bodyClass = 'p-5' })
 
 export function StatCard({ label, value, tone = 'slate', sub }) {
   const tones = {
-    slate: 'text-slate-900',
-    amber: 'text-amber-700',
-    sky: 'text-sky-700',
-    green: 'text-emerald-700',
-    brand: 'text-brand-700',
+    slate: ['text-slate-900', 'border-l-slate-400'],
+    amber: ['text-amber-700', 'border-l-amber-500'],
+    sky: ['text-sky-700', 'border-l-sky-500'],
+    green: ['text-emerald-700', 'border-l-emerald-500'],
+    brand: ['text-brand-700', 'border-l-brand-600'],
   };
+  const [text, accent] = tones[tone] || tones.slate;
   return (
-    <div className="card px-5 py-4">
-      <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{label}</p>
-      <p className={cx('mt-1 text-2xl font-semibold tabular-nums', tones[tone])}>{value ?? '—'}</p>
+    <div className={cx('card border-l-4 px-5 py-4', accent)}>
+      <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{label}</p>
+      <p className={cx('mt-1 text-2xl font-bold tabular-nums', text)}>{value ?? '—'}</p>
       {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
     </div>
   );
