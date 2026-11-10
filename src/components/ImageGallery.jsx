@@ -40,7 +40,7 @@ export default function ImageGallery({ images, srcFor, downloadFor }) {
             className="group overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-left hover:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
           >
             <div className="aspect-[4/3] overflow-hidden bg-slate-100">
-              <img src={fileUrl(srcFor(img))} alt={img.fileName} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+              <img src={fileUrl(srcFor(img))} crossOrigin="use-credentials"  alt={img.fileName} loading="lazy" className="h-full w-full object-cover transition-transform group-hover:scale-105" />
             </div>
             <div className="flex items-center gap-1.5 px-2 py-1.5">
               <span className="rounded bg-slate-200 px-1 text-[11px] font-semibold text-slate-700 tabular-nums">#{img.position}</span>
@@ -63,7 +63,7 @@ export default function ImageGallery({ images, srcFor, downloadFor }) {
             </div>
           </div>
           <div className="relative flex flex-1 items-center justify-center overflow-hidden px-14 pb-6">
-            <img src={fileUrl(srcFor(current))} alt={current.fileName} className="max-h-full max-w-full object-contain" />
+            <img src={fileUrl(srcFor(current))} crossOrigin="use-credentials" alt={current.fileName} className="max-h-full max-w-full object-contain" />
             <button type="button" onClick={prev} disabled={index === 0} className="absolute left-3 rounded-full bg-white/10 p-3 hover:bg-white/20 disabled:opacity-30" aria-label="Previous">‹</button>
             <button type="button" onClick={next} disabled={index === images.length - 1} className="absolute right-3 rounded-full bg-white/10 p-3 hover:bg-white/20 disabled:opacity-30" aria-label="Next">›</button>
           </div>
