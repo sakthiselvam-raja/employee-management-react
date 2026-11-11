@@ -17,6 +17,17 @@ function UploadBox() {
   const [file, setFile] = useState(null);
   const [drag, setDrag] = useState(false);
   const [progress, setProgress] = useState(0);
+  const limitsQ = useQuery({ queryKey: ['uploadLimits'], queryFn: adminApi.uploadLimits, staleTime: 30_000, refetchOnWindowFocus: true });
+  const limits = limitsQ.data;
+
+  // problem with the chosen file, found before anything is sent
+  const fileProblem = (() => {
+    if (!file || !limits) return null;
+    if (file.size > limits.maxZipBytes) return `This ZIP is ${formatBytes(file.size)}. The server accepts up to ${formatBytes(limits.maxZipBytes)}.`;
+    const need = file.size * limits.diskFactor;
+    if (limits.freeDiskBytes !== null && limits.freeDiskBytes < need) return `Not enough free disk space on the server: about ${formatBytes(need)} needed, ${formatBytes(limits.freeDiskBytes)} free.`;
+    return null;
+  })();
 
   const upload = useMutation({
     mutationFn: () => adminApi.uploadZip(file, setProgress),
@@ -67,6 +78,11 @@ function UploadBox() {
           <>
             <p className="font-medium text-slate-700">Drop a ZIP file here, or click to choose</p>
             <p className="mt-1 text-sm text-slate-500">Folders, Excel sheets (.xlsx, .xls, .csv) and images are detected automatically.</p>
+            {limits && (
+              <p className="mt-1 text-xs text-slate-400">
+                Maximum {formatBytes(limits.maxZipBytes)} per ZIP{limits.freeDiskBytes !== null && ` · ${formatBytes(limits.freeDiskBytes)} free on the server`}
+              </p>
+            )}
           </>
         )}
       </div>
@@ -82,11 +98,15 @@ function UploadBox() {
           </div>
         </div>
       )}
+      {upload.isPending && (
+        <p className="mt-2 text-xs text-amber-700">Large ZIPs take a while. Keep this tab open until the upload and extraction finish.</p>
+      )}
+      {fileProblem && !upload.isPending && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{fileProblem}</p>}
       {upload.isError && <div className="mt-4"><ErrorBox error={upload.error} /></div>}
 
       <div className="mt-4 flex justify-end gap-2">
         {file && !upload.isPending && <Button variant="secondary" onClick={() => setFile(null)}>Clear</Button>}
-        <Button disabled={!file} loading={upload.isPending} onClick={() => upload.mutate()}>Upload & extract</Button>
+        <Button disabled={!file || Boolean(fileProblem)} loading={upload.isPending} onClick={() => upload.mutate()}>Upload & extract</Button>
       </div>
     </Card>
   );

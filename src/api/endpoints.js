@@ -36,6 +36,7 @@ export const adminApi = {
 
   uploads: () => data(api.get('/admin/uploads')).then((d) => d.uploads),
   upload: (id) => data(api.get(`/admin/uploads/${id}`)).then((d) => d.upload),
+  uploadLimits: () => data(api.get('/admin/uploads/limits')),
   uploadZip: (file, onProgress) => {
     const form = new FormData();
     form.append('file', file);
