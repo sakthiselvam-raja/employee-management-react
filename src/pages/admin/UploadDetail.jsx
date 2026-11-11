@@ -5,7 +5,7 @@ import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
 import AssignmentForm, { takenOn } from '../../components/AssignmentForm';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
-import { AssignmentDetailModal, EditAssignmentModal } from '../../components/AdminModals';
+import { AssignmentDetailModal, EditAssignmentModal, FolderImagesModal } from '../../components/AdminModals';
 import {
   Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
 } from '../../components/ui';
@@ -61,6 +61,7 @@ export default function UploadDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [folderQ, setFolderQ] = useState('');
   const [excelQ, setExcelQ] = useState('');
+  const [browse, setBrowse] = useState(null);
 
   const q = useQuery({ queryKey: ['upload', Number(id)], queryFn: () => adminApi.upload(id) });
   const usersQ = useQuery({ queryKey: ['users', '', 'active'], queryFn: () => adminApi.users({ status: 'active' }) });
@@ -153,6 +154,7 @@ export default function UploadDetailPage() {
                         </p>
                       </div>
                       <div className="flex flex-wrap gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => setBrowse({ folderId: f.id, title: `${f.relativePath || '(root)'} — ${f.imageCount} images` })} disabled={f.imageCount === 0}>View images</Button>
                         <Button size="sm" onClick={() => quickAssign(f)} disabled={dayCount >= f.imageCount} title={dayCount >= f.imageCount ? 'Whole folder already assigned on the selected date' : undefined}>Assign range</Button>
                       </div>
                     </div>
@@ -241,6 +243,7 @@ export default function UploadDetailPage() {
         </div>
       </div>
 
+      <FolderImagesModal target={browse} onClose={() => setBrowse(null)} />
       <ExcelPreviewModal
         open={Boolean(preview)}
         onClose={() => setPreview(null)}
