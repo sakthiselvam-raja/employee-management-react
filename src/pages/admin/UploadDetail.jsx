@@ -13,25 +13,36 @@ import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
 import { formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel, todayISO } from '../../utils/format';
 
-const PALETTE = ['#2563eb', '#0d9488', '#e11d48', '#d97706', '#0284c7', '#7c3aed', '#16a34a', '#db2777', '#475569', '#ca8a04'];
-const colorFor = (userId) => PALETTE[userId % PALETTE.length];
+/** Number of distinct images covered by a set of ranges (ranges of different dates may overlap). */
+function coveredCount(ranges) {
+  const sorted = [...ranges].sort((a, b) => a.startPosition - b.startPosition);
+  let total = 0;
+  let end = 0;
+  for (const r of sorted) {
+    const start = Math.max(r.startPosition, end + 1);
+    if (r.endPosition >= start) { total += r.endPosition - start + 1; end = r.endPosition; }
+  }
+  return total;
+}
 
-/** Horizontal bar showing which image numbers are taken by whom on the selected date */
-function Coverage({ folder, ranges }) {
+/** Actual totals for a folder over every working date: assigned images, users and completed images. */
+function folderStats(folder) {
+  const assigned = coveredCount(folder.ranges);
+  const completed = coveredCount(folder.ranges.filter((r) => r.status === 'COMPLETED'));
+  const users = new Set(folder.ranges.map((r) => r.userId)).size;
+  const pct = (n) => (folder.imageCount ? Math.round((n / folder.imageCount) * 100) : 0);
+  return { assigned, completed, users, assignedPct: pct(assigned), completedPct: pct(completed) };
+}
+
+function Progress({ folder, stats }) {
+  const total = folder.imageCount || 1;
   return (
-    <div className="relative h-3 w-full overflow-hidden rounded-full bg-slate-100" title="Assigned ranges for the selected date">
-      {ranges.map((r) => (
-        <div
-          key={r.id}
-          className="absolute inset-y-0"
-          style={{
-            left: `${((r.startPosition - 1) / folder.imageCount) * 100}%`,
-            width: `${((r.endPosition - r.startPosition + 1) / folder.imageCount) * 100}%`,
-            background: colorFor(r.userId),
-          }}
-          title={rangeLabel(r)}
-        />
-      ))}
+    <div
+      className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100"
+      title={`${stats.completed} completed · ${stats.assigned - stats.completed} assigned, in progress · ${folder.imageCount - stats.assigned} not assigned`}
+    >
+      <div className="bg-emerald-500" style={{ width: `${(stats.completed / total) * 100}%` }} />
+      <div className="bg-brand-500" style={{ width: `${((stats.assigned - stats.completed) / total) * 100}%` }} />
     </div>
   );
 }
@@ -112,7 +123,7 @@ export default function UploadDetailPage() {
       <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
         <span className="text-sm font-medium text-brand-900">Working date</span>
         <input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setDayPage(1); } }} />
-        <span className="text-sm text-brand-900">{dayTotal} assignment(s) on {formatWorkDate(date)} — coverage below is for this date.</span>
+        <span className="text-sm text-brand-900">{dayTotal} assignment(s) on {formatWorkDate(date)}. The date is used for new assignments; folder counts and progress show all dates.</span>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-5">
@@ -130,19 +141,25 @@ export default function UploadDetailPage() {
             <ul className="divide-y divide-slate-100">
               {folders.map((f) => {
                 const taken = takenOn(f, date);
-                const assignedCount = taken.reduce((n, r) => n + r.endPosition - r.startPosition + 1, 0);
+                const dayCount = taken.reduce((n, r) => n + r.endPosition - r.startPosition + 1, 0);
+                const st = folderStats(f);
                 return (
                   <li key={f.id} className="px-5 py-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate font-medium text-slate-900">📁 {f.relativePath || '(root)'}</p>
-                        <p className="text-xs text-slate-500">{f.imageCount} images · {assignedCount} assigned · {f.imageCount - assignedCount} free on this date</p>
+                        <p className="text-xs text-slate-500">
+                          {f.imageCount} images · <span className="font-medium text-slate-700">{st.assigned} assigned</span> · {st.users} user(s) · {f.imageCount - st.assigned} not assigned
+                        </p>
                       </div>
                       <div className="flex flex-wrap gap-1">
-                        <Button size="sm" onClick={() => quickAssign(f)} disabled={assignedCount >= f.imageCount}>Assign range</Button>
+                        <Button size="sm" onClick={() => quickAssign(f)} disabled={dayCount >= f.imageCount} title={dayCount >= f.imageCount ? 'Whole folder already assigned on the selected date' : undefined}>Assign range</Button>
                       </div>
                     </div>
-                    <div className="mt-3"><Coverage folder={f} ranges={taken} /></div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="min-w-0 flex-1"><Progress folder={f} stats={st} /></div>
+                      <span className="shrink-0 text-xs font-medium text-slate-600 tabular-nums">{st.completedPct}% done · {st.assignedPct}% assigned</span>
+                    </div>
                   </li>
                 );
               })}

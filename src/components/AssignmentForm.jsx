@@ -38,6 +38,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false); // show validation messages after the first submit
 
+  // load / reset the form (only when switching between edit targets)
   useEffect(() => {
     if (initial) {
       setUserId(String(initial.user.id));
@@ -49,13 +50,25 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
     } else {
       setUserId('');
       setExcelIds(new Set());
-      setRows(prefill ? [newRow(prefill)] : (upload.imageFolders.length ? [newRow()] : []));
+      setRows(upload.imageFolders.length ? [newRow()] : []);
       setNotes('');
-      if (defaultDate) setWorkDate(defaultDate);
     }
     setSubmitted(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initial, prefill, defaultDate]);
+  }, [initial]);
+
+  // working date chosen on the page
+  useEffect(() => {
+    if (!initial && defaultDate) setWorkDate(defaultDate);
+  }, [initial, defaultDate]);
+
+  // "Assign range" clicked on a folder row: reselect that folder on the right, keep user / Excel / notes
+  useEffect(() => {
+    if (initial || !prefill) return;
+    setRows((rs) => (rs.length <= 1 ? [newRow(prefill)] : [...rs, newRow(prefill)]));
+    setSubmitted(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill]);
 
   const folderMap = useMemo(() => new Map(upload.imageFolders.map((f) => [f.id, f])), [upload]);
   const addRange = () => setRows((rs) => [...rs, newRow()]);
