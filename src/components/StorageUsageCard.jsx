@@ -6,6 +6,7 @@ import { Card, ErrorBox } from './ui';
 const PARTS = [
   { key: 'zips', label: 'Uploaded ZIP files', color: 'bg-brand-600' },
   { key: 'extracted', label: 'Extracted files', color: 'bg-sky-500' },
+  { key: 'submissions', label: 'Submission files (uploaded by users)', color: 'bg-emerald-500' },
 ];
 
 /** File storage + PostgreSQL database size, shown on the admin dashboard. */
@@ -21,18 +22,18 @@ export default function StorageUsageCard() {
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Files */}
           <div>
-            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">ZIP + extracted files</p>
+            <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">ZIP + extracted + submission files</p>
             <p className="mt-1 text-2xl font-semibold text-slate-900">{formatBytes(d.totalBytes)}</p>
             <div className="mt-3 flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
               {PARTS.map((p) => (
-                <div key={p.key} className={p.color} style={{ width: `${d.totalBytes ? (d.files[p.key].bytes / d.totalBytes) * 100 : 0}%` }} />
+                <div key={p.key} className={p.color} style={{ width: `${d.totalBytes ? ((d.files[p.key]?.bytes || 0) / d.totalBytes) * 100 : 0}%` }} />
               ))}
             </div>
             <ul className="mt-3 space-y-1.5 text-sm">
               {PARTS.map((p) => (
                 <li key={p.key} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />{p.label} <span className="text-xs text-slate-400">({d.files[p.key].count})</span></span>
-                  <span className="font-medium text-slate-800 tabular-nums">{formatBytes(d.files[p.key].bytes)}</span>
+                  <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />{p.label} <span className="text-xs text-slate-400">({d.files[p.key]?.count ?? 0})</span></span>
+                  <span className="font-medium text-slate-800 tabular-nums">{formatBytes(d.files[p.key]?.bytes || 0)}</span>
                 </li>
               ))}
             </ul>

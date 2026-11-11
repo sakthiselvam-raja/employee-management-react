@@ -12,6 +12,12 @@ import {
 } from '../../components/ui';
 import { folderLabel, formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
 
+const addMonthISO = (iso, n) => {
+  const d = new Date(`${iso}T00:00:00Z`);
+  d.setUTCMonth(d.getUTCMonth() + n);
+  return d.toISOString().slice(0, 10);
+};
+
 export default function AssignmentsPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -46,6 +52,27 @@ export default function AssignmentsPage() {
     setSelected(new Set());
     setPage(1);
   };
+
+  // date range: at most one month between start and end
+  const setRange = (key, value) => {
+    const next = new URLSearchParams(params);
+    let from = key === 'from' ? value : filters.from;
+    let to = key === 'to' ? value : filters.to;
+    if (from && key === 'from' && (!to || to < from || to > addMonthISO(from, 1))) to = addMonthISO(from, 1);
+    if (to && key === 'to' && from && (from > to || addMonthISO(from, 1) < to)) from = addMonthISO(to, -1);
+    if (from) next.set('from', from); else next.delete('from');
+    if (to) next.set('to', to); else next.delete('to');
+    setParams(next, { replace: true });
+    setSelected(new Set());
+    setPage(1);
+  };
+  const resetFilters = () => {
+    setParams(new URLSearchParams(), { replace: true });
+    setSearch('');
+    setSelected(new Set());
+    setPage(1);
+  };
+  const filtersActive = Boolean(mode !== 'day' || params.get('date') || filters.status || filters.userId || filters.zipUploadId || search);
 
   const apiParams = useMemo(() => {
     const p = {
@@ -124,9 +151,10 @@ export default function AssignmentsPage() {
             <input type="date" className="input w-auto" value={filters.date} onChange={(e) => setFilter('date', e.target.value)} />
           ) : (
             <>
-              <input type="date" className="input w-auto" value={filters.from} onChange={(e) => setFilter('from', e.target.value)} aria-label="From" />
+              <input type="date" className="input w-auto" value={filters.from} max={filters.to || undefined} onChange={(e) => setRange('from', e.target.value)} aria-label="Start date" title="Start date" />
               <span className="pb-2 text-sm text-slate-400">to</span>
-              <input type="date" className="input w-auto" value={filters.to} onChange={(e) => setFilter('to', e.target.value)} aria-label="To" />
+              <input type="date" className="input w-auto" value={filters.to} min={filters.from || undefined} max={filters.from ? addMonthISO(filters.from, 1) : undefined} onChange={(e) => setRange('to', e.target.value)} aria-label="End date" title="End date (max one month after start)" />
+              <span className="pb-2 text-xs text-slate-400">max 1 month</span>
             </>
           )}
           <select className="input w-auto" value={filters.status} onChange={(e) => setFilter('status', e.target.value)}>
@@ -152,6 +180,7 @@ export default function AssignmentsPage() {
             <option value="">All ZIPs</option>
             {uploadsQ.data?.map((u) => <option key={u.id} value={u.id}>{u.originalName}</option>)}
           </select>
+          <Button variant="secondary" onClick={resetFilters} disabled={!filtersActive} title="Clear all filters and go back to today">↺ Reset filters</Button>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 border-b border-slate-100 px-4 py-2.5 text-sm">

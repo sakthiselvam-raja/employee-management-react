@@ -13,7 +13,7 @@ import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
 import { formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel, todayISO } from '../../utils/format';
 
-const PALETTE = ['#0d9488', '#6366f1', '#e11d48', '#d97706', '#0284c7', '#7c3aed', '#16a34a', '#db2777', '#475569', '#ca8a04'];
+const PALETTE = ['#2563eb', '#0d9488', '#e11d48', '#d97706', '#0284c7', '#7c3aed', '#16a34a', '#db2777', '#475569', '#ca8a04'];
 const colorFor = (userId) => PALETTE[userId % PALETTE.length];
 
 /** Horizontal bar showing which image numbers are taken by whom on the selected date */
@@ -191,6 +191,7 @@ export default function UploadDetailPage() {
                 <li key={a.id} className="flex items-start justify-between gap-2 px-5 py-3">
                   <button type="button" className="min-w-0 text-left" onClick={() => setDetailId(a.id)}>
                     <p className="truncate text-sm font-medium text-slate-900 hover:text-brand-700">{a.user.fullName}</p>
+                    <p className="text-xs font-medium text-brand-700">Employee ID: {a.user.employeeId}</p>
                     <p className="text-xs text-slate-500">
                       {a.excelFiles.length} Excel · {a.totalImages} images
                       {a.imageRanges.length > 0 && ` (${a.imageRanges.map((r) => `${r.folderName} ${rangeLabel(r)}`).join(', ')})`}
