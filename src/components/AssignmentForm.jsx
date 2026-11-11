@@ -28,6 +28,12 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
   const [userId, setUserId] = useState('');
   const [workDate, setWorkDate] = useState(defaultDate || todayISO());
   const [excelIds, setExcelIds] = useState(new Set());
+  const [excelQ, setExcelQ] = useState('');
+  const visibleExcel = useMemo(() => {
+    const t = excelQ.trim().toLowerCase();
+    if (!t) return upload.excelFiles;
+    return upload.excelFiles.filter((e) => `${e.relativePath} ${e.sheetNames.join(' ')}`.toLowerCase().includes(t));
+  }, [upload.excelFiles, excelQ]);
   const [rows, setRows] = useState([]);
   const [notes, setNotes] = useState('');
   const [submitted, setSubmitted] = useState(false); // show validation messages after the first submit
@@ -160,8 +166,18 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
         {upload.excelFiles.length === 0 ? (
           <p className="text-sm text-slate-500">This ZIP has no Excel files.</p>
         ) : (
+          <>
+          <input
+            type="search"
+            className="input mb-2"
+            placeholder="Search Excel file or sheet name…"
+            value={excelQ}
+            onChange={(e) => setExcelQ(e.target.value)}
+            aria-label="Search Excel sheets"
+          />
           <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-slate-200 p-2">
-            {upload.excelFiles.map((e) => {
+            {visibleExcel.length === 0 && <p className="px-2 py-3 text-center text-sm text-slate-500">No Excel file matches “{excelQ}”.</p>}
+            {visibleExcel.map((e) => {
               return (
                 <label key={e.id} className={cx('flex cursor-pointer items-start gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50', excelIds.has(e.id) && 'bg-brand-50/60')}>
                   <input type="checkbox" className="mt-0.5 accent-brand-700" checked={excelIds.has(e.id)} onChange={() => toggleExcel(e.id)} />
@@ -173,6 +189,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
               );
             })}
           </div>
+          </>
         )}
       </div>
 

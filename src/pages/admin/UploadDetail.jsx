@@ -49,6 +49,7 @@ export default function UploadDetailPage() {
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [folderQ, setFolderQ] = useState('');
+  const [excelQ, setExcelQ] = useState('');
 
   const q = useQuery({ queryKey: ['upload', Number(id)], queryFn: () => adminApi.upload(id) });
   const usersQ = useQuery({ queryKey: ['users', '', 'active'], queryFn: () => adminApi.users({ status: 'active' }) });
@@ -76,6 +77,7 @@ export default function UploadDetailPage() {
   };
 
   const s = u.assignmentSummary;
+  const excelList = u.excelFiles.filter((e) => textMatches(`${e.relativePath} ${e.sheetNames.join(' ')}`, excelQ));
   const folders = u.imageFolders.filter((f) => textMatches(f.relativePath || '(root)', folderQ));
 
   return (
@@ -148,10 +150,23 @@ export default function UploadDetailPage() {
           </Card>
 
           {/* Excel files */}
-          <Card title={`Excel sheets (${u.excelFiles.length})`} bodyClass="">
+          <Card title={`Excel sheets (${excelQ.trim() ? `${excelList.length} of ${u.excelFiles.length}` : u.excelFiles.length})`} bodyClass="">
             {u.excelFiles.length === 0 && <EmptyState title="No Excel files in this ZIP" icon="📊" />}
+            {u.excelFiles.length > 0 && (
+              <div className="border-b border-slate-100 px-5 py-3">
+                <input
+                  type="search"
+                  className="input"
+                  placeholder="Search Excel file or sheet name…"
+                  value={excelQ}
+                  onChange={(e) => setExcelQ(e.target.value)}
+                  aria-label="Search Excel sheets"
+                />
+              </div>
+            )}
+            {excelList.length === 0 && u.excelFiles.length > 0 && <p className="px-5 py-6 text-center text-sm text-slate-500">No Excel file matches “{excelQ}”.</p>}
             <ul className="divide-y divide-slate-100">
-              {u.excelFiles.map((e) => {
+              {excelList.map((e) => {
                 return (
                   <li key={e.id} className="flex flex-col gap-2 px-5 py-3 sm:flex-row sm:items-center">
                     <div className="min-w-0 flex-1">

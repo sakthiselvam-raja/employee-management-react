@@ -23,7 +23,8 @@ export default function FolderSelect({ folders, value, onChange, freeCount, plac
   const selected = folders.find((f) => String(f.id) === String(value));
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return t ? folders.filter((f) => folderLabel(f).toLowerCase().includes(t)) : folders;
+    const tokens = t.split(/\s+/).filter(Boolean);
+    return tokens.length ? folders.filter((f) => tokens.every((k) => folderLabel(f).toLowerCase().includes(k))) : folders;
   }, [folders, q]);
 
   return (
@@ -43,11 +44,9 @@ export default function FolderSelect({ folders, value, onChange, freeCount, plac
 
       {open && (
         <div className="absolute z-30 mt-1 w-full min-w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-          {folders.length > 6 && (
-            <div className="border-b border-slate-100 p-2">
-              <input autoFocus type="search" className="input py-1.5" placeholder="Search folder…" value={q} onChange={(e) => setQ(e.target.value)} />
-            </div>
-          )}
+          <div className="border-b border-slate-100 p-2">
+            <input autoFocus type="search" className="input py-1.5" placeholder="Search folder name…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search folders" />
+          </div>
           <ul role="listbox" className="max-h-60 overflow-y-auto py-1">
             {list.length === 0 && <li className="px-3 py-3 text-center text-sm text-slate-500">No folder found</li>}
             {list.map((f) => {
