@@ -292,7 +292,7 @@ export default function UsersPage() {
                     <td className="td">
                       <div className="flex flex-wrap justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>Edit</Button>
-                        {/* Reset password hidden (frontend only) */}
+                        {/* <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'reset', user: u })}>Reset password</Button> */}
                         <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'toggle', user: u })}>{u.isActive ? 'Deactivate' : 'Activate'}</Button>
                         {u.assignmentCount === 0 && (
                           <Button size="sm" variant="subtleDanger" onClick={() => setConfirm({ type: 'delete', user: u })}>Delete</Button>

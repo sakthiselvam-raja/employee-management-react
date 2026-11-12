@@ -12,6 +12,7 @@ import AssignmentsPage from './pages/admin/Assignments';
 import HistoryPage from './pages/admin/History';
 import MyTasksPage from './pages/user/MyTasks';
 import TaskDetailPage from './pages/user/TaskDetail';
+import ChangePasswordButton from './pages/user/ChangePassword';
 
 const adminNav = [
   { to: '/admin', label: 'Dashboard', end: true },
@@ -49,7 +50,9 @@ export default function App() {
       </Route>
 
       <Route element={<ProtectedRoute role="USER" />}>
-        <Route element={<AppShell nav={userNav} portalLabel="My work" />}>
+        <Route element={<AppShell nav={userNav} portalLabel="My work" 
+        // extraMenu={<ChangePasswordButton />} 
+        />}>
           <Route path="/tasks" element={<MyTasksPage />} />
           <Route path="/tasks/:id" element={<TaskDetailPage />} />
         </Route>
