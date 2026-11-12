@@ -10,11 +10,11 @@ export default function ProtectedRoute({ role }) {
   if (isLoading) return <PageLoader label="Checking your session…" />;
 
   if (!me) {
-    return <Navigate to={role === 'ADMIN' ? '/admin/login' : '/login'} replace state={{ from: location.pathname }} />;
+    return <Navigate to={role === 'ADMIN' ? '/admin/login' : '/emp-portal/login'} replace state={{ from: location.pathname }} />;
   }
   if (me.role !== role) {
     // Logged in with the other role — send them to their own dashboard
-    return <Navigate to={me.role === 'ADMIN' ? '/admin' : '/tasks'} replace />;
+    return <Navigate to={me.role === 'ADMIN' ? '/admin' : '/emp-portal/tasks'} replace />;
   }
   return <Outlet />;
 }

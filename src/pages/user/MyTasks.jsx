@@ -53,7 +53,7 @@ export default function MyTasksPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {list.map((a) => (
-          <Link key={a.id} to={`/tasks/${a.id}`} className="card group flex flex-col p-5 transition-shadow hover:shadow-md">
+          <Link key={a.id} to={`/emp-portal/tasks/${a.id}`} className="card group flex flex-col p-5 transition-shadow hover:shadow-md">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{formatWorkDate(a.workDate)}</p>

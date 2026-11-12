@@ -5,7 +5,7 @@ import { errorMessage } from '../api/client';
 import { Button, Field, PageLoader } from '../components/ui';
 import BrandLogo from '../components/BrandLogo';
 
-/** Separate login screens: /admin/login (role ADMIN) and /login (role USER). */
+/** Separate login screens: /admin/login (role ADMIN) and /emp-portal/login (role USER). */
 export default function LoginPage({ role }) {
   const isAdmin = role === 'ADMIN';
   const { data: me, isLoading } = useMe();
@@ -16,7 +16,7 @@ export default function LoginPage({ role }) {
   const [showPw, setShowPw] = useState(false);
 
   if (isLoading) return <PageLoader />;
-  if (me) return <Navigate to={me.role === 'ADMIN' ? '/admin' : '/tasks'} replace />;
+  if (me) return <Navigate to={me.role === 'ADMIN' ? '/admin' : '/emp-portal/tasks'} replace />;
 
   const submit = (e) => {
     e.preventDefault();
@@ -26,7 +26,7 @@ export default function LoginPage({ role }) {
     login.mutate(body, {
       onSuccess: () => {
         const from = location.state?.from;
-        const home = isAdmin ? '/admin' : '/tasks';
+        const home = isAdmin ? '/admin' : '/emp-portal/tasks';
         navigate(from && from.startsWith(home) ? from : home, { replace: true });
       },
     });
@@ -97,7 +97,7 @@ export default function LoginPage({ role }) {
           </div>
 
           <p className="mt-8 text-center text-sm text-slate-500">
-            {isAdmin ? <>Not an admin? <Link to="/login" className="link">Employee login</Link></> : <>Administrator? <Link to="/admin/login" className="link">Admin login</Link></>}
+            {isAdmin ? <>Not an admin? <Link to="/emp-portal/login" className="link">Employee login</Link></> : <>Administrator? <Link to="/admin/login" className="link">Admin login</Link></>}
           </p>
         </form>
       </div>

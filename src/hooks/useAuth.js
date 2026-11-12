@@ -39,7 +39,7 @@ export function useLogout() {
       const role = qc.getQueryData(['me'])?.role;
       qc.clear();
       qc.setQueryData(['me'], null);
-      navigate(role === 'ADMIN' ? '/admin/login' : '/login', { replace: true });
+      navigate(role === 'ADMIN' ? '/admin/login' : '/emp-portal/login', { replace: true });
     },
   });
 }

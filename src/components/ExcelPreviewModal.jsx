@@ -9,6 +9,7 @@ import { ErrorBox, LinkButton, Modal, PageLoader, Tabs } from './ui';
  */
 export default function ExcelPreviewModal({ open, onClose, title, queryKey, queryFn, downloadPath }) {
   const [sheet, setSheet] = useState(0);
+  const [full, setFull] = useState(false);
   const q = useQuery({ queryKey, queryFn, enabled: open, staleTime: 60_000 });
   const data = q.data;
   const current = data?.sheets?.[sheet];
@@ -16,9 +17,19 @@ export default function ExcelPreviewModal({ open, onClose, title, queryKey, quer
   return (
     <Modal
       open={open}
-      onClose={onClose}
+      onClose={() => { setFull(false); onClose?.(); }}
       title={title || data?.fileName || 'Excel preview'}
-      size="full"
+      size={full ? 'screen' : 'full'}
+      headerActions={(
+        <button
+          type="button"
+          onClick={() => setFull((f) => !f)}
+          className="rounded-md px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100"
+          title={full ? 'Back to normal size' : 'Open in full screen'}
+        >
+          {full ? '⤡ Exit full screen' : '⤢ Full screen'}
+        </button>
+      )}
       footer={downloadPath && <LinkButton href={fileUrl(downloadPath)} variant="primary">Download file</LinkButton>}
     >
       {q.isLoading && <PageLoader label="Reading spreadsheet…" />}
@@ -32,7 +43,7 @@ export default function ExcelPreviewModal({ open, onClose, title, queryKey, quer
           {current && (current.rows.length === 0 ? (
             <p className="py-8 text-center text-sm text-slate-500">This sheet is empty.</p>
           ) : (
-            <div className="max-h-[65vh] overflow-auto rounded-lg border border-slate-200">
+            <div className={`${full ? 'max-h-[calc(100vh-14rem)]' : 'max-h-[65vh]'} overflow-auto rounded-lg border border-slate-200`}>
               <table className="min-w-full text-xs">
                 <tbody>
                   {current.rows.map((row, r) => (

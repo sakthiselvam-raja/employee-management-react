@@ -134,7 +134,7 @@ export default function TaskDetailPage() {
   return (
     <>
       <PageHeader
-        back={<Link to="/tasks" className="mb-1 inline-block text-sm text-slate-500 hover:text-slate-700">← My tasks</Link>}
+        back={<Link to="/emp-portal/tasks" className="mb-1 inline-block text-sm text-slate-500 hover:text-slate-700">← My tasks</Link>}
         title={a.zipUpload.originalName}
         description={`Working date ${formatWorkDate(a.workDate)} · assigned by ${a.assignedBy?.fullName} on ${formatDateTime(a.createdAt)}`}
         actions={(
