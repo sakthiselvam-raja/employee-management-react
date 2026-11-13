@@ -8,7 +8,7 @@ export function formatBytes(bytes) {
     v /= 1024;
     i += 1;
   }
-  return `${v.toFixed(v >= 10 ? 0 : 1)} ${units[i]}`;
+  return `${v.toFixed(v >= 100 ? 0 : v >= 10 ? 1 : 2)} ${units[i]}`;
 }
 
 export function formatDateTime(value) {
@@ -32,7 +32,11 @@ export function todayISO() {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export const rangeLabel = (r) => (r.startPosition === r.endPosition ? `#${r.startPosition}` : `${r.startPosition}–${r.endPosition}`);
+// A range is shown by image FILE NAMES (e.g. "IMG_001.jpg – IMG_020.jpg"); numbers are only a fallback.
+export const rangeLabel = (r) => {
+  if (r.startName && r.endName) return r.startPosition === r.endPosition ? r.startName : `${r.startName} – ${r.endName}`;
+  return r.startPosition === r.endPosition ? `#${r.startPosition}` : `${r.startPosition}–${r.endPosition}`;
+};
 
 export const folderLabel = (f) => f?.relativePath || f?.folderPath || '(root)';
 

@@ -6,9 +6,10 @@ import { Button, ErrorBox, Field, cx } from './ui';
 import { freeRanges, rangeLabel, todayISO } from '../utils/format';
 import { RemoteUserSelect } from './UserPicker';
 import FolderSelect from './FolderSelect';
+import ImageNameSelect from './ImageNameSelect';
 
 let rowKey = 1;
-const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '' });
+const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '', startName: r.startName ?? null, endName: r.endName ?? null });
 
 /** Ranges already taken by OTHER assignments — over all dates, a folder image is assigned only once */
 export function takenOn(folder, _date, excludeAssignmentId) {
@@ -44,7 +45,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       setUserId(String(initial.user.id));
       setWorkDate(initial.workDate);
       setExcelIds(new Set(initial.excelFiles.map((e) => e.id)));
-      const existing = initial.imageRanges.map((r) => newRow({ imageFolderId: r.folderId, startPosition: r.startPosition, endPosition: r.endPosition }));
+      const existing = initial.imageRanges.map((r) => newRow({ imageFolderId: r.folderId, startPosition: r.startPosition, endPosition: r.endPosition, startName: r.startName, endName: r.endName }));
       setRows(existing.length || !upload.imageFolders.length ? existing : [newRow()]);
       setNotes(initial.adminNotes || '');
     } else {
@@ -85,9 +86,9 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       const end = Number(r.endPosition);
       let msg = '';
       if (!folder) msg = 'Choose a folder.';
-      else if (r.startPosition === '' || r.endPosition === '') msg = 'Enter both From and To image numbers.';
-      else if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < 1) msg = 'Image numbers must be whole numbers of 1 or more.';
-      else if (start > end) msg = '“From” cannot be greater than “To”.';
+      else if (r.startPosition === '' || r.endPosition === '') msg = 'Choose both the From and To image.';
+      else if (!Number.isInteger(start) || !Number.isInteger(end) || start < 1 || end < 1) msg = 'Choose the From and To image from the list.';
+      else if (start > end) msg = 'The “From” image must come before the “To” image.';
       else if (end > folder.imageCount) msg = `This folder has only ${folder.imageCount} images.`;
       else {
         const clash = takenOn(folder, workDate, initial?.id).find((t) => start <= t.endPosition && t.startPosition <= end);
@@ -98,7 +99,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       else valid.push({ folderId: folder.id, start, end });
     });
     const formErr = !rowErr.size && !excelIds.size && !valid.length
-      ? 'Select at least one Excel sheet, or enter an image range (folder, From and To).'
+      ? 'Select at least one Excel sheet, or choose an image range (folder, From and To image).'
       : '';
     return { rowErr, formErr };
   }, [rows, excelIds, workDate, folderMap, initial]);
@@ -148,6 +149,8 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       const gap = folder && freeRanges(folder.imageCount, takenOn(folder, workDate, initial?.id))[0];
       merged.startPosition = gap ? gap.startPosition : 1;
       merged.endPosition = gap ? gap.endPosition : folder?.imageCount ?? '';
+      merged.startName = null; // names are looked up for the suggested range
+      merged.endName = null;
     }
     return merged;
   }));
@@ -230,11 +233,25 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
                     />
                   </div>
                   <div className="flex items-end gap-2">
-                    <Field label="From" className="min-w-0 flex-1">
-                      <input type="number" className="input" min={1} max={folder?.imageCount} value={r.startPosition} onChange={(e) => updateRow(r.key, { startPosition: e.target.value })} />
+                    <Field label="From image" className="min-w-0 flex-1">
+                      <ImageNameSelect
+                        folderId={r.imageFolderId}
+                        position={r.startPosition === '' ? null : Number(r.startPosition)}
+                        name={r.startName}
+                        maxPosition={r.endPosition === '' ? undefined : Number(r.endPosition)}
+                        placeholder="Choose first image…"
+                        onPick={({ position, name }) => updateRow(r.key, { startPosition: position, startName: name })}
+                      />
                     </Field>
-                    <Field label="To" className="min-w-0 flex-1">
-                      <input type="number" className="input" min={1} max={folder?.imageCount} value={r.endPosition} onChange={(e) => updateRow(r.key, { endPosition: e.target.value })} />
+                    <Field label="To image" className="min-w-0 flex-1">
+                      <ImageNameSelect
+                        folderId={r.imageFolderId}
+                        position={r.endPosition === '' ? null : Number(r.endPosition)}
+                        name={r.endName}
+                        minPosition={r.startPosition === '' ? undefined : Number(r.startPosition)}
+                        placeholder="Choose last image…"
+                        onPick={({ position, name }) => updateRow(r.key, { endPosition: position, endName: name })}
+                      />
                     </Field>
                     <Button variant="subtleDanger" className="shrink-0" onClick={() => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((x) => x.key !== r.key)))}>{rows.length === 1 ? 'Clear' : 'Remove'}</Button>
                   </div>
@@ -243,10 +260,10 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
                 {folder && (
                   <p className="mt-2 text-xs text-slate-500">
                     {gaps.length
-                      ? <>Free images: {gaps.map((g) => (
-                        <button key={g.startPosition} type="button" className="link mr-2" onClick={() => updateRow(r.key, { startPosition: g.startPosition, endPosition: g.endPosition })}>{rangeLabel(g)}</button>
+                      ? <>{gaps.reduce((n, g) => n + g.endPosition - g.startPosition + 1, 0)} images free{gaps.length > 1 ? ` in ${gaps.length} blocks` : ''}: {gaps.map((g, i) => (
+                        <button key={g.startPosition} type="button" className="link mr-2" onClick={() => updateRow(r.key, { startPosition: g.startPosition, endPosition: g.endPosition, startName: null, endName: null })}>Use free block{gaps.length > 1 ? ` ${i + 1}` : ''} ({g.endPosition - g.startPosition + 1})</button>
                       ))}</>
-                      : <span className="text-amber-700">All {folder.imageCount} images in this folder are already assigned on this date.</span>}
+                      : <span className="text-amber-700">All {folder.imageCount} images in this folder are already assigned.</span>}
                   </p>
                 )}
               </div>

@@ -46,7 +46,7 @@ export const adminApi = {
     }));
   },
   deleteUpload: (id, force = false) => data(api.delete(`/admin/uploads/${id}`, { params: { force } })),
-  folderImages: (folderId, from, to, page, pageSize) => data(api.get(`/admin/files/folders/${folderId}/images`, { params: { from, to, page, pageSize } })),
+  folderImages: (folderId, from, to, page, pageSize, q) => data(api.get(`/admin/files/folders/${folderId}/images`, { params: { from, to, page, pageSize, q } })),
   excelPreview: (id) => data(api.get(`/admin/files/excel/${id}/preview`)),
   submissionPreview: (id) => data(api.get(`/admin/files/submissions/${id}/preview`)),
 
