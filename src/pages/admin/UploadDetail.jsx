@@ -100,6 +100,7 @@ export default function UploadDetailPage() {
         actions={(
           <>
             <LinkButton variant="primary" href={fileUrl(urls.admin.uploadSubmissionsZip(u.id))}>Download submission files only</LinkButton>
+            <LinkButton href={fileUrl(urls.admin.uploadOriginalZip(u.id))} title="The uploaded ZIP, rebuilt from the extracted files (same folders and file names)">Download original ZIP</LinkButton>
             {/* 'Download all + submissions' hidden (frontend only) */}
             <Button variant="subtleDanger" onClick={() => setDeleting(true)}>Delete</Button>
           </>
