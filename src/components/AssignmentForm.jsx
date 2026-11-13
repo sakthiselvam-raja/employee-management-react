@@ -10,9 +10,9 @@ import FolderSelect from './FolderSelect';
 let rowKey = 1;
 const newRow = (r = {}) => ({ key: rowKey++, imageFolderId: r.imageFolderId ?? '', startPosition: r.startPosition ?? '', endPosition: r.endPosition ?? '' });
 
-/** Ranges taken by OTHER assignments on the given date */
-export function takenOn(folder, date, excludeAssignmentId) {
-  return folder.ranges.filter((r) => r.workDate === date && r.assignmentId !== excludeAssignmentId);
+/** Ranges already taken by OTHER assignments — over all dates, a folder image is assigned only once */
+export function takenOn(folder, _date, excludeAssignmentId) {
+  return folder.ranges.filter((r) => r.assignmentId !== excludeAssignmentId);
 }
 
 /**
@@ -91,7 +91,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       else if (end > folder.imageCount) msg = `This folder has only ${folder.imageCount} images.`;
       else {
         const clash = takenOn(folder, workDate, initial?.id).find((t) => start <= t.endPosition && t.startPosition <= end);
-        if (clash) msg = `Images ${rangeLabel(clash)} are already assigned on this date.`;
+        if (clash) msg = `Images ${rangeLabel(clash)} are already assigned.`;
         else if (valid.some((v) => v.folderId === folder.id && start <= v.end && v.start <= end)) msg = 'This range overlaps another range in this form.';
       }
       if (msg) rowErr.set(r.key, msg);
@@ -142,7 +142,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
   const updateRow = (key, patch) => setRows((rs) => rs.map((r) => {
     if (r.key !== key) return r;
     const merged = { ...r, ...patch };
-    // When a folder is chosen, suggest its first free range for this date
+    // When a folder is chosen, suggest its first free range
     if (patch.imageFolderId !== undefined && patch.imageFolderId) {
       const folder = folderMap.get(Number(patch.imageFolderId));
       const gap = folder && freeRanges(folder.imageCount, takenOn(folder, workDate, initial?.id))[0];
@@ -243,7 +243,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
                 {folder && (
                   <p className="mt-2 text-xs text-slate-500">
                     {gaps.length
-                      ? <>Free on this date: {gaps.map((g) => (
+                      ? <>Free images: {gaps.map((g) => (
                         <button key={g.startPosition} type="button" className="link mr-2" onClick={() => updateRow(r.key, { startPosition: g.startPosition, endPosition: g.endPosition })}>{rangeLabel(g)}</button>
                       ))}</>
                       : <span className="text-amber-700">All {folder.imageCount} images in this folder are already assigned on this date.</span>}

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
 import { fileUrl } from '../../api/client';
-import AssignmentForm, { takenOn } from '../../components/AssignmentForm';
+import AssignmentForm from '../../components/AssignmentForm';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import { AssignmentDetailModal, EditAssignmentModal, FolderImagesModal } from '../../components/AdminModals';
 import {
@@ -11,7 +11,7 @@ import {
 } from '../../components/ui';
 import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
-import { formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel, todayISO } from '../../utils/format';
+import { formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel } from '../../utils/format';
 
 /** Number of distinct images covered by a set of ranges (ranges of different dates may overlap). */
 function coveredCount(ranges) {
@@ -51,7 +51,6 @@ export default function UploadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const formRef = useRef(null);
-  const [date, setDate] = useState(todayISO());
   const [dayPage, setDayPage] = useState(1);
   const DAY_PAGE_SIZE = 10;
   const [prefill, setPrefill] = useState(null);
@@ -65,10 +64,10 @@ export default function UploadDetailPage() {
 
   const q = useQuery({ queryKey: ['upload', Number(id)], queryFn: () => adminApi.upload(id) });
   const usersQ = useQuery({ queryKey: ['users', '', 'active'], queryFn: () => adminApi.users({ status: 'active' }) });
-  // only the selected date's assignments for this ZIP, one page at a time
+  // every assignment of this ZIP (all dates), newest first, one page at a time
   const assignQ = useQuery({
-    queryKey: ['assignments', { zipUploadId: Number(id), date, page: dayPage }],
-    queryFn: () => adminApi.assignmentsPage({ zipUploadId: id, date, page: dayPage, pageSize: DAY_PAGE_SIZE }),
+    queryKey: ['assignments', { zipUploadId: Number(id), page: dayPage }],
+    queryFn: () => adminApi.assignmentsPage({ zipUploadId: id, page: dayPage, pageSize: DAY_PAGE_SIZE }),
     placeholderData: keepPreviousData,
   });
 
@@ -83,7 +82,7 @@ export default function UploadDetailPage() {
   if (q.isError) return <ErrorBox error={q.error} />;
 
   const quickAssign = (folder) => {
-    const gap = freeRanges(folder.imageCount, takenOn(folder, date))[0];
+    const gap = freeRanges(folder.imageCount, folder.ranges)[0]; // first image range nobody has yet
     setPrefill({ imageFolderId: folder.id, startPosition: gap?.startPosition ?? 1, endPosition: gap?.endPosition ?? folder.imageCount });
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -101,7 +100,7 @@ export default function UploadDetailPage() {
         actions={(
           <>
             <LinkButton variant="primary" href={fileUrl(urls.admin.uploadSubmissionsZip(u.id))}>Download submission files only</LinkButton>
-            <LinkButton href={fileUrl(urls.admin.uploadZip(u.id))}>Download all + submissions</LinkButton>
+            {/* 'Download all + submissions' hidden (frontend only) */}
             <Button variant="subtleDanger" onClick={() => setDeleting(true)}>Delete</Button>
           </>
         )}
@@ -121,12 +120,6 @@ export default function UploadDetailPage() {
       </div>
       <p className="mb-6 font-mono text-xs break-all text-slate-400">Stored: {u.zipPath} · Extracted to: {u.extractPath}</p>
 
-      <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-        <span className="text-sm font-medium text-brand-900">Working date</span>
-        <input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setDayPage(1); } }} />
-        <span className="text-sm text-brand-900">{dayTotal} assignment(s) on {formatWorkDate(date)}. The date is used for new assignments; folder counts and progress show all dates.</span>
-      </div>
-
       <div className="grid gap-6 xl:grid-cols-5">
         <div className="space-y-6 xl:col-span-3">
           {/* Image folders */}
@@ -141,8 +134,6 @@ export default function UploadDetailPage() {
             {u.imageFolders.length > 0 && folders.length === 0 && <EmptyState title="No folder matches your search" icon="🔍" />}
             <ul className="divide-y divide-slate-100">
               {folders.map((f) => {
-                const taken = takenOn(f, date);
-                const dayCount = taken.reduce((n, r) => n + r.endPosition - r.startPosition + 1, 0);
                 const st = folderStats(f);
                 return (
                   <li key={f.id} className="px-5 py-4">
@@ -155,7 +146,7 @@ export default function UploadDetailPage() {
                       </div>
                       <div className="flex flex-wrap gap-1">
                         <Button size="sm" variant="ghost" onClick={() => setBrowse({ folderId: f.id, title: `${f.relativePath || '(root)'} — ${f.imageCount} images` })} disabled={f.imageCount === 0}>View images</Button>
-                        <Button size="sm" onClick={() => quickAssign(f)} disabled={dayCount >= f.imageCount} title={dayCount >= f.imageCount ? 'Whole folder already assigned on the selected date' : undefined}>Assign range</Button>
+                        <Button size="sm" onClick={() => quickAssign(f)}>Assign range</Button>
                       </div>
                     </div>
                     <div className="mt-3 flex items-center gap-3">
@@ -213,13 +204,13 @@ export default function UploadDetailPage() {
                 <EmptyState icon="👥" title="No active users" description="Create users first." action={<Button onClick={() => navigate('/admin/users')}>Go to Users</Button>} />
               )}
               {usersQ.data?.length > 0 && (
-                <AssignmentForm upload={u} defaultDate={date} prefill={prefill} onDone={() => setPrefill(null)} />
+                <AssignmentForm upload={u} prefill={prefill} onDone={() => setPrefill(null)} />
               )}
             </Card>
           </div>
 
-          <Card title={`Assignments on ${formatWorkDate(date)}`} bodyClass="">
-            {dayAssignments.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-500">Nothing assigned from this ZIP on this date.</p>}
+          <Card title={`Assignments (${s.total})`} bodyClass="">
+            {dayAssignments.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-500">{assignQ.isFetching ? 'Loading…' : 'Nothing has been assigned from this ZIP yet.'}</p>}
             <ul className="divide-y divide-slate-100">
               {dayAssignments.map((a) => (
                 <li key={a.id} className="flex items-start justify-between gap-2 px-5 py-3">
