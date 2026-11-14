@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi, urls } from '../../api/endpoints';
-import { fileUrl } from '../../api/client';
+import { errorMessage, fileUrl } from '../../api/client';
+import { useToast } from '../../components/Toast';
 import AssignmentForm from '../../components/AssignmentForm';
 import ExcelPreviewModal from '../../components/ExcelPreviewModal';
 import { AssignmentDetailModal, EditAssignmentModal, FolderImagesModal } from '../../components/AdminModals';
 import {
-  Button, Card, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
+  Button, Card, ConfirmModal, EmptyState, ErrorBox, LinkButton, PageHeader, PageLoader, Pagination, StatusBadge,
 } from '../../components/ui';
 import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
@@ -60,6 +61,24 @@ export default function UploadDetailPage() {
   const [deleting, setDeleting] = useState(false);
   const [folderQ, setFolderQ] = useState('');
   const [excelQ, setExcelQ] = useState('');
+  const qc = useQueryClient();
+  const toast = useToast();
+  const excelInput = useRef(null);
+  const [excelProgress, setExcelProgress] = useState(0);
+  const [removeExcel, setRemoveExcel] = useState(null);
+
+  const refreshUpload = () => ['upload', 'uploads', 'assignments', 'dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+  const addExcel = useMutation({
+    mutationFn: (files) => adminApi.addExcelFiles(id, files, setExcelProgress),
+    onSuccess: (r) => { refreshUpload(); toast.success(`${r.added} Excel sheet(s) added`); },
+    onError: (e) => toast.error(errorMessage(e)),
+    onSettled: () => { setExcelProgress(0); if (excelInput.current) excelInput.current.value = ''; },
+  });
+  const delExcel = useMutation({
+    mutationFn: (e) => adminApi.removeExcel(id, e.id, true),
+    onSuccess: () => { refreshUpload(); setRemoveExcel(null); toast.success('Excel sheet removed'); },
+    onError: (e) => { setRemoveExcel(null); toast.error(errorMessage(e)); },
+  });
   const [browse, setBrowse] = useState(null);
 
   const q = useQuery({ queryKey: ['upload', Number(id)], queryFn: () => adminApi.upload(id) });
@@ -161,7 +180,25 @@ export default function UploadDetailPage() {
           </Card>
 
           {/* Excel files */}
-          <Card title={`Excel sheets (${excelQ.trim() ? `${excelList.length} of ${u.excelFiles.length}` : u.excelFiles.length})`} bodyClass="">
+          <Card
+            title={`Excel sheets (${excelQ.trim() ? `${excelList.length} of ${u.excelFiles.length}` : u.excelFiles.length})`}
+            bodyClass=""
+            actions={(
+              <>
+                <input
+                  ref={excelInput}
+                  type="file"
+                  multiple
+                  accept=".xlsx,.xlsm,.xls,.csv"
+                  className="hidden"
+                  onChange={(e) => { const files = [...(e.target.files || [])]; if (files.length) addExcel.mutate(files); }}
+                />
+                <Button size="sm" loading={addExcel.isPending} onClick={() => excelInput.current?.click()}>
+                  {addExcel.isPending ? `Uploading ${excelProgress}%` : '+ Add Excel sheets'}
+                </Button>
+              </>
+            )}
+          >
             {u.excelFiles.length === 0 && <EmptyState title="No Excel files in this ZIP" icon="📊" />}
             {u.excelFiles.length > 0 && (
               <div className="border-b border-slate-100 px-5 py-3">
@@ -189,6 +226,7 @@ export default function UploadDetailPage() {
                     <div className="flex shrink-0 gap-2">
                       <Button size="sm" variant="ghost" onClick={() => setPreview(e)}>Preview</Button>
                       <LinkButton size="sm" href={fileUrl(urls.admin.excel(e.id))}>Download</LinkButton>
+                      <Button size="sm" variant="subtleDanger" onClick={() => setRemoveExcel(e)}>Remove</Button>
                     </div>
                   </li>
                 );
@@ -236,6 +274,18 @@ export default function UploadDetailPage() {
       </div>
 
       <FolderImagesModal target={browse} onClose={() => setBrowse(null)} />
+      <ConfirmModal
+        open={Boolean(removeExcel)}
+        onClose={() => setRemoveExcel(null)}
+        onConfirm={() => delExcel.mutate(removeExcel)}
+        loading={delExcel.isPending}
+        danger
+        title="Remove this Excel sheet?"
+        confirmText="Remove"
+        message={removeExcel && (removeExcel.assignedTo.length
+          ? `“${removeExcel.relativePath}” is assigned to ${removeExcel.assignedTo.length} assignment(s). It will be deleted from the server and taken away from those users.`
+          : `“${removeExcel.relativePath}” will be deleted from the server.`)}
+      />
       <ExcelPreviewModal
         open={Boolean(preview)}
         onClose={() => setPreview(null)}

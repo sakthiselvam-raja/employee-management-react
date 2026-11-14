@@ -35,6 +35,11 @@ function RangeImagesModal({ assignmentId, range, onClose }) {
             images={images}
             srcFor={(img) => urls.user.image(assignmentId, img.id)}
             downloadFor={(img) => urls.user.imageDownload(assignmentId, img.id)}
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPage={setPage}
+            loading={q.isFetching}
           />
           <ImagePager page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1); }} />
         </>
@@ -43,32 +48,43 @@ function RangeImagesModal({ assignmentId, range, onClose }) {
   );
 }
 
-function SubmitWork({ assignment, onSubmitted }) {
+/**
+ * One task = one submission.
+ * No `submission` -> add form. With `submission` -> edit form (a new file is optional and replaces the old one).
+ */
+function SubmitWork({ assignment, submission, onDone, onCancel }) {
   const toast = useToast();
+  const edit = Boolean(submission);
   const fileInput = useRef(null);
   const [file, setFile] = useState(null);
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(submission?.notes || '');
   const [markCompleted, setMarkCompleted] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  const submit = useMutation({
-    mutationFn: () => userApi.submit(assignment.id, { file, notes, markCompleted }, setProgress),
+  const save = useMutation({
+    mutationFn: () => (edit
+      ? userApi.updateSubmission(submission.id, { file, notes, markCompleted }, setProgress)
+      : userApi.submit(assignment.id, { file, notes, markCompleted }, setProgress)),
     onSuccess: () => {
-      toast.success(markCompleted ? 'Submitted and marked as completed' : 'Submitted — the admin can now see it');
+      toast.success(edit ? 'Submission updated' : (markCompleted ? 'Submitted and marked as completed' : 'Submitted — the admin can now see it'));
       setFile(null);
-      setNotes('');
-      setMarkCompleted(false);
       setProgress(0);
       if (fileInput.current) fileInput.current.value = '';
-      onSubmitted();
+      onDone();
     },
     onError: () => setProgress(0),
   });
 
+  const changed = edit ? Boolean(file) || notes.trim() !== (submission.notes || '').trim() || markCompleted : Boolean(file) || Boolean(notes.trim());
+  const empty = !file && !notes.trim() && !(edit && submission.hasFile); // a submission needs a file or a note
+
   return (
-    <Card title="Submit your work">
-      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); submit.mutate(); }}>
-        <Field label="Updated Excel sheet" hint=".xlsx, .xlsm, .xls or .csv">
+    <Card title={edit ? 'Edit your submission' : 'Submit your work'}>
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
+        <Field
+          label={edit ? 'Replace Excel sheet (optional)' : 'Updated Excel sheet'}
+          hint={edit && submission.hasFile ? `Current file: ${submission.originalName}. Choose a new file only if you want to replace it.` : '.xlsx, .xlsm, .xls or .csv'}
+        >
           <input
             ref={fileInput}
             type="file"
@@ -87,12 +103,13 @@ function SubmitWork({ assignment, onSubmitted }) {
             Mark this task as completed
           </label>
         )}
-        {submit.isPending && file && (
+        {save.isPending && file && (
           <div className="h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} /></div>
         )}
-        {submit.isError && <ErrorBox error={submit.error} />}
-        <div className="flex justify-end">
-          <Button type="submit" loading={submit.isPending} disabled={!file && !notes.trim()}>Submit</Button>
+        {save.isError && <ErrorBox error={save.error} />}
+        <div className="flex justify-end gap-2">
+          {edit && <Button type="button" variant="secondary" onClick={onCancel} disabled={save.isPending}>Cancel</Button>}
+          <Button type="submit" loading={save.isPending} disabled={!changed || empty}>{edit ? 'Save changes' : 'Submit'}</Button>
         </div>
       </form>
     </Card>
@@ -107,6 +124,7 @@ export default function TaskDetailPage() {
   const [range, setRange] = useState(null);
   const [subPreview, setSubPreview] = useState(null);
   const [delSub, setDelSub] = useState(null);
+  const [editingSub, setEditingSub] = useState(false);
 
   const q = useQuery({ queryKey: ['myAssignment', Number(id)], queryFn: () => userApi.assignment(id) });
   const refresh = () => {
@@ -122,7 +140,7 @@ export default function TaskDetailPage() {
 
   const deleteSub = useMutation({
     mutationFn: (sid) => userApi.deleteSubmission(sid),
-    onSuccess: () => { refresh(); setDelSub(null); toast.success('Submission deleted'); },
+    onSuccess: (r) => { refresh(); setDelSub(null); setEditingSub(false); toast.success(r?.reopened ? 'Submission deleted — the task is open again' : 'Submission deleted'); },
     onError: (e) => { setDelSub(null); toast.error(errorMessage(e)); },
   });
 
@@ -130,6 +148,7 @@ export default function TaskDetailPage() {
   if (q.isError) return <ErrorBox error={q.error} />;
 
   const { assignment: a, submissions } = q.data;
+  const mine = submissions[0]; // newest — a task has a single submission
 
   return (
     <>
@@ -199,27 +218,36 @@ export default function TaskDetailPage() {
         </div>
 
         <div className="space-y-6 lg:col-span-2">
-          <SubmitWork assignment={a} onSubmitted={refresh} />
-
-          <Card title={`Your submissions (${submissions.length})`} bodyClass="">
-            {submissions.length === 0 && <p className="px-5 py-6 text-sm text-slate-500">Nothing submitted yet.</p>}
-            <ul className="divide-y divide-slate-100">
-              {submissions.map((s) => (
-                <li key={s.id} className="px-5 py-3 text-sm">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-xs text-slate-500">{formatDateTime(s.createdAt)}</span>
-                    <span className="flex items-center gap-3">
-                      {s.hasFile && <button type="button" className="link text-xs" onClick={() => setSubPreview(s)}>Preview</button>}
-                      {s.hasFile && <a className="link text-xs" href={fileUrl(urls.user.submission(s.id))}>Download</a>}
-                      <button type="button" className="text-xs font-medium text-red-600 hover:underline" onClick={() => setDelSub(s)}>Delete</button>
-                    </span>
-                  </div>
-                  {s.hasFile && <p className="mt-0.5 truncate text-slate-800">📄 {s.originalName} <span className="text-xs text-slate-500">({formatBytes(s.sizeBytes)})</span></p>}
-                  {s.notes && <p className="mt-1 whitespace-pre-wrap text-slate-600">{s.notes}</p>}
-                </li>
-              ))}
-            </ul>
-          </Card>
+          {/* one task = one submission: add it once, then edit or delete it */}
+          {!mine && <SubmitWork assignment={a} onDone={refresh} />}
+          {mine && editingSub && (
+            <SubmitWork assignment={a} submission={mine} onDone={() => { refresh(); setEditingSub(false); }} onCancel={() => setEditingSub(false)} />
+          )}
+          {mine && !editingSub && (
+            <Card
+              title="Your submission"
+              actions={(
+                <span className="flex items-center gap-3">
+                  <button type="button" className="link text-sm" onClick={() => setEditingSub(true)}>Edit</button>
+                  <button type="button" className="text-sm font-medium text-red-600 hover:underline" onClick={() => setDelSub(mine)}>Delete</button>
+                </span>
+              )}
+              bodyClass="px-5 py-4 text-sm"
+            >
+              <p className="text-xs text-slate-500">Submitted {formatDateTime(mine.createdAt)}</p>
+              {mine.hasFile && (
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                  <p className="min-w-0 truncate text-slate-800">📄 {mine.originalName} <span className="text-xs text-slate-500">({formatBytes(mine.sizeBytes)})</span></p>
+                  <span className="flex items-center gap-3">
+                    <button type="button" className="link text-xs" onClick={() => setSubPreview(mine)}>Preview</button>
+                    <a className="link text-xs" href={fileUrl(urls.user.submission(mine.id))}>Download</a>
+                  </span>
+                </div>
+              )}
+              {mine.notes && <p className="mt-2 whitespace-pre-wrap text-slate-600">{mine.notes}</p>}
+              {!mine.hasFile && !mine.notes && <p className="text-slate-500">Empty submission.</p>}
+            </Card>
+          )}
 
           <Card title="Timeline" bodyClass="px-5 py-4 text-sm space-y-1.5">
             <p><span className="text-slate-500">Assigned:</span> {formatDateTime(a.createdAt)}</p>

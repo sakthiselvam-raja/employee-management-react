@@ -150,16 +150,10 @@ const actionLabels = {
   LOGIN: 'Login', ZIP_UPLOADED: 'ZIP uploaded', ZIP_DELETED: 'ZIP deleted', ZIP_DOWNLOADED: 'ZIP downloaded',
   ASSIGNMENT_CREATED: 'Assignment created', ASSIGNMENT_UPDATED: 'Assignment updated', ASSIGNMENT_REASSIGNED: 'Reassigned',
   ASSIGNMENT_DELETED: 'Assignment deleted', STATUS_CHANGED: 'Status changed', STATUS_CHANGED_BULK: 'Bulk status change',
-  SUBMISSION_UPLOADED: 'User uploaded file/notes', SUBMISSION_DELETED: 'User deleted a submission', USER_CREATED: 'User created', USER_UPDATED: 'User updated',
+  SUBMISSION_UPLOADED: 'User uploaded file/notes', SUBMISSION_UPDATED: 'User edited a submission', SUBMISSION_DELETED: 'User deleted a submission', EXCEL_ADDED: 'Excel sheets added to a ZIP', EXCEL_REMOVED: 'Excel sheet removed from a ZIP', USER_CREATED: 'User created', USER_UPDATED: 'User updated',
   USER_ACTIVATED: 'User activated', USER_DEACTIVATED: 'User deactivated', USER_DELETED: 'User deleted',
   USER_PASSWORD_RESET: 'Password reset', PASSWORD_CHANGED: 'Password changed',
 };
-
-/**
- * The "Activity log" tab is hidden for now. The backend keeps recording every action
- * (logins, uploads, assignments, deletions…), so nothing is lost — set this to true to show the tab again.
- */
-const SHOW_ACTIVITY_LOG = false;
 
 function ActivityTab() {
   const [page, setPage] = useState(1);
@@ -196,6 +190,12 @@ function ActivityTab() {
     </Card>
   );
 }
+
+/**
+ * The "Activity log" tab is hidden for now. The backend keeps recording every action
+ * (logins, uploads, assignments, deletions…), so nothing is lost — set this to true to show the tab again.
+ */
+const SHOW_ACTIVITY_LOG = false;
 
 export default function HistoryPage() {
   const [tab, setTab] = useState('files');

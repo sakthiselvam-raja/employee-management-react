@@ -45,6 +45,16 @@ export const adminApi = {
       timeout: 0,
     }));
   },
+  /** add several Excel sheets to an existing ZIP upload */
+  addExcelFiles: (id, files, onProgress) => {
+    const form = new FormData();
+    files.forEach((f) => form.append('files', f));
+    return data(api.post(`/admin/uploads/${id}/excel`, form, {
+      onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+      timeout: 0,
+    }));
+  },
+  removeExcel: (id, excelId, force = false) => data(api.delete(`/admin/uploads/${id}/excel/${excelId}`, { params: { force } })),
   deleteUpload: (id, force = false) => data(api.delete(`/admin/uploads/${id}`, { params: { force } })),
   folderImages: (folderId, from, to, page, pageSize, q) => data(api.get(`/admin/files/folders/${folderId}/images`, { params: { from, to, page, pageSize, q } })),
   excelPreview: (id) => data(api.get(`/admin/files/excel/${id}/preview`)),
@@ -73,6 +83,16 @@ export const userApi = {
   excelPreview: (id, excelId) => data(api.get(`/user/assignments/${id}/excel/${excelId}/preview`)),
   submissionPreview: (id) => data(api.get(`/user/submissions/${id}/preview`)),
   deleteSubmission: (id) => data(api.delete(`/user/submissions/${id}`)),
+  /** edit the one submission of a task: a new file is optional (replaces the old one), notes are replaced */
+  updateSubmission: (id, { file, notes, markCompleted }, onProgress) => {
+    const form = new FormData();
+    if (file) form.append('file', file);
+    form.append('notes', notes || '');
+    form.append('markCompleted', markCompleted ? 'true' : 'false');
+    return data(api.put(`/user/submissions/${id}`, form, {
+      onUploadProgress: (e) => onProgress?.(e.total ? Math.round((e.loaded / e.total) * 100) : 0),
+    }));
+  },
   /** preview of a file the user just picked (nothing is saved) */
   previewFile: (file) => {
     const form = new FormData();
