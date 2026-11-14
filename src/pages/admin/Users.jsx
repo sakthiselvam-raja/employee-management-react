@@ -52,7 +52,16 @@ function UserFormModal({ open, onClose, user }) {
     >
       <form id="user-form" className="grid gap-4 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); save.mutate(); }}>
         <Field label="Employee ID" required className="sm:col-span-2">
-          <input className="input" value={form.employeeId} onChange={set('employeeId')} required placeholder="EMP001" />
+          <input
+            className="input"
+            value={form.employeeId}
+            onChange={(e) => setForm({ ...form, employeeId: e.target.value.replace(/\s/g, '') })}
+            onKeyDown={(e) => { if (e.key === ' ') e.preventDefault(); }}
+            autoCapitalize="none"
+            autoComplete="off"
+            required
+            placeholder="EMP001"
+          />
         </Field>
         <Field label="First name" required><input className="input" value={form.firstName} onChange={set('firstName')} required /></Field>
         <Field label="Middle name"><input className="input" value={form.middleName} onChange={set('middleName')} /></Field>
@@ -111,7 +120,7 @@ function BulkUploadModal({ open, onClose }) {
       open={open}
       onClose={onClose}
       size="lg"
-      title="Bulk upload users (CSV)"
+      title="Bulk upload users (Excel or CSV)"
       footer={(
         <>
           <Button variant="secondary" onClick={onClose}>{result ? 'Close' : 'Cancel'}</Button>
@@ -123,20 +132,27 @@ function BulkUploadModal({ open, onClose }) {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-900">
             <span>Columns: <strong>employeeId, firstName, middleName, lastName, email</strong> (middleName is optional).</span>
-            <LinkButton size="sm" href={fileUrl('/admin/users/csv-template')} download>⬇ Download sample CSV</LinkButton>
+            <span className="flex gap-2">
+              <LinkButton size="sm" href={fileUrl('/admin/users/template.xlsx')} download>⬇ Sample Excel</LinkButton>
+              <LinkButton size="sm" href={fileUrl('/admin/users/csv-template')} download>⬇ Sample CSV</LinkButton>
+            </span>
           </div>
 
           <div>
             <input
               ref={inputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".xlsx,.xlsm,.csv,text/csv"
               className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
               onChange={(e) => { setFile(e.target.files?.[0] || null); upload.reset(); }}
             />
-            <div className="mt-3"><SelectedFilePreview file={file} headerCheck={checkCsvHeader} inline /></div>
+            <div className="mt-3">
+              {file && /\.csv$/i.test(file.name)
+                ? <SelectedFilePreview file={file} headerCheck={checkCsvHeader} inline />
+                : file && <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">📊 {file.name} — the first sheet is read; the first row must be the header (employeeId, firstName, middleName, lastName, email).</p>}
+            </div>
             <p className="mt-2 text-xs text-slate-500">
-              Every new account gets the default password <strong>ism@123</strong>. Rows with an existing Employee ID or email are skipped. Up to 2000 users per file.
+              Every new account gets the default password <strong>ism@123</strong>. Spaces in Employee IDs are removed automatically. Rows with an existing Employee ID or email are skipped. Up to 2000 users per file.
             </p>
           </div>
 
@@ -195,6 +211,8 @@ export default function UsersPage() {
   const [editing, setEditing] = useState(null); // null closed, {} new, user edit
   const [bulkOpen, setBulkOpen] = useState(false);
   const [confirm, setConfirm] = useState(null); // { type, user }
+  const [selected, setSelected] = useState(() => new Set()); // ids ticked for "Delete selected"
+  const [bulkDelete, setBulkDelete] = useState(false);
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
@@ -234,6 +252,27 @@ export default function UsersPage() {
     onError: (err) => toast.error(errorMessage(err)),
   });
 
+  // the selection belongs to the page / filter it was made on
+  useEffect(() => { setSelected(new Set()); }, [debounced, status, page]);
+
+  // only users without assignment history can be deleted
+  const deletable = (rows || []).filter((u) => u.assignmentCount === 0);
+  const allTicked = deletable.length > 0 && deletable.every((u) => selected.has(u.id));
+  const toggleOne = (id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleAll = () => setSelected(allTicked ? new Set() : new Set(deletable.map((u) => u.id)));
+
+  const bulkDel = useMutation({
+    mutationFn: () => adminApi.deleteUsers([...selected]),
+    onSuccess: (r) => {
+      qc.invalidateQueries({ queryKey: ['users'] });
+      setBulkDelete(false);
+      setSelected(new Set());
+      if (r.deletedCount) toast.success(`${r.deletedCount} user(s) deleted${r.skippedCount ? `, ${r.skippedCount} skipped` : ''}`);
+      else toast.error(`Nothing was deleted — ${r.skipped[0]?.reason || 'users could not be deleted'}`);
+    },
+    onError: (err) => { setBulkDelete(false); toast.error(errorMessage(err)); },
+  });
+
   const confirmText = confirm && {
     reset: { title: 'Reset password', message: `Reset ${confirm.user.fullName}'s password to the default (ism@123)?`, btn: 'Reset password' },
     toggle: confirm.user.isActive
@@ -249,7 +288,8 @@ export default function UsersPage() {
         description="Create employee accounts and manage access."
         actions={(
           <div className="flex flex-wrap gap-2">
-            <Button variant="secondary" onClick={() => setBulkOpen(true)}>⬆ Bulk upload (CSV)</Button>
+            <LinkButton href={fileUrl(`/admin/users/export?${new URLSearchParams({ search: search.trim(), status })}`)} title="Download the users (current search and status filter) as an Excel file">⬇ Export Excel</LinkButton>
+            <Button variant="secondary" onClick={() => setBulkOpen(true)}>⬆ Bulk upload (Excel / CSV)</Button>
             <Button onClick={() => setEditing({})}>+ Add user</Button>
           </div>
         )}
@@ -265,6 +305,16 @@ export default function UsersPage() {
           </select>
         </div>
 
+        {selected.size > 0 && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-red-100 bg-red-50 px-4 py-2.5 text-sm">
+            <span className="font-medium text-red-800">{selected.size} user(s) selected</span>
+            <span className="flex gap-2">
+              <Button size="sm" variant="secondary" onClick={() => setSelected(new Set())}>Clear</Button>
+              <Button size="sm" variant="danger" onClick={() => setBulkDelete(true)}>Delete selected</Button>
+            </span>
+          </div>
+        )}
+
         {q.isLoading && <PageLoader />}
         {q.isError && <div className="p-4"><ErrorBox error={q.error} /></div>}
         {rows?.length === 0 && (
@@ -276,6 +326,17 @@ export default function UsersPage() {
             <table className="min-w-full divide-y divide-slate-100">
               <thead className="bg-slate-50/60">
                 <tr>
+                  <th className="th w-10">
+                    <input
+                      type="checkbox"
+                      className="accent-brand-700"
+                      checked={allTicked}
+                      disabled={deletable.length === 0}
+                      onChange={toggleAll}
+                      aria-label="Select all users on this page that can be deleted"
+                      title={deletable.length === 0 ? 'No user on this page can be deleted' : 'Select all deletable users on this page'}
+                    />
+                  </th>
                   <th className="th">Employee ID</th><th className="th">Name</th><th className="th">Email</th>
                   <th className="th">Status</th><th className="th">Assignments</th><th className="th">Last login</th><th className="th text-right">Actions</th>
                 </tr>
@@ -283,6 +344,17 @@ export default function UsersPage() {
               <tbody className="divide-y divide-slate-100">
                 {rows.map((u) => (
                   <tr key={u.id} className={u.isActive ? '' : 'bg-slate-50/70 text-slate-500'}>
+                    <td className="td">
+                      <input
+                        type="checkbox"
+                        className="accent-brand-700 disabled:opacity-30"
+                        checked={selected.has(u.id)}
+                        disabled={u.assignmentCount > 0}
+                        onChange={() => toggleOne(u.id)}
+                        aria-label={`Select ${u.fullName}`}
+                        title={u.assignmentCount > 0 ? 'Has assignment history — deactivate instead of deleting' : undefined}
+                      />
+                    </td>
                     <td className="td font-mono text-xs">{u.employeeId}</td>
                     <td className="td font-medium text-slate-800">{u.fullName}</td>
                     <td className="td">{u.email}</td>
@@ -292,7 +364,7 @@ export default function UsersPage() {
                     <td className="td">
                       <div className="flex flex-wrap justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>Edit</Button>
-                        {/* <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'reset', user: u })}>Reset password</Button> */}
+                        <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'reset', user: u })}>Reset password</Button>
                         <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'toggle', user: u })}>{u.isActive ? 'Deactivate' : 'Activate'}</Button>
                         {u.assignmentCount === 0 && (
                           <Button size="sm" variant="subtleDanger" onClick={() => setConfirm({ type: 'delete', user: u })}>Delete</Button>
@@ -311,6 +383,16 @@ export default function UsersPage() {
       <BulkUploadModal open={bulkOpen} onClose={() => setBulkOpen(false)} />
       <UserFormModal open={editing !== null} user={editing?.id ? editing : null} onClose={() => setEditing(null)} />
 
+      <ConfirmModal
+        open={bulkDelete}
+        onClose={() => setBulkDelete(false)}
+        onConfirm={() => bulkDel.mutate()}
+        loading={bulkDel.isPending}
+        danger
+        title={`Delete ${selected.size} user(s)?`}
+        confirmText="Delete"
+        message="The selected users will be permanently deleted. This cannot be undone. Users who have assignment history are never deleted."
+      />
       <ConfirmModal
         open={Boolean(confirm)}
         onClose={() => setConfirm(null)}

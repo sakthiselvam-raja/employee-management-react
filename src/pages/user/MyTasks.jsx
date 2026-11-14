@@ -10,7 +10,7 @@ import { formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../util
 
 export default function MyTasksPage() {
   const { data: me } = useMe();
-  const [allDates, setAllDates] = useState(false);
+  const [allDates, setAllDates] = useState(true); // "All dates" is ticked by default
   const [date, setDate] = useState(todayISO());
   const [status, setStatus] = useState('');
 

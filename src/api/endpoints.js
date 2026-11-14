@@ -33,6 +33,7 @@ export const adminApi = {
   setUserStatus: (id, isActive) => data(api.patch(`/admin/users/${id}/status`, { isActive })),
   resetPassword: (id) => data(api.post(`/admin/users/${id}/reset-password`)),
   deleteUser: (id) => data(api.delete(`/admin/users/${id}`)),
+  deleteUsers: (ids) => data(api.post('/admin/users/bulk-delete', { ids })),
 
   uploads: () => data(api.get('/admin/uploads')).then((d) => d.uploads),
   upload: (id) => data(api.get(`/admin/uploads/${id}`)).then((d) => d.upload),

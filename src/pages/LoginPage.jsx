@@ -68,7 +68,9 @@ export default function LoginPage({ role }) {
                 autoFocus
                 autoComplete="username"
                 value={form.id}
-                onChange={(e) => setForm({ ...form, id: e.target.value })}
+                onChange={(e) => setForm({ ...form, id: e.target.value.replace(/\s/g, '') })}
+                onKeyDown={(e) => { if (e.key === ' ') e.preventDefault(); }}
+                autoCapitalize="none"
                 placeholder={isAdmin ? 'admin' : 'EMP001 or name@company.com'}
                 required
               />

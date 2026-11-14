@@ -166,7 +166,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
         save.mutate();
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="space-y-4">
         <div>
           <span className="mb-1 block text-sm font-medium text-slate-700">Assign to <span className="text-red-500">*</span></span>
           <RemoteUserSelect value={userId} onChange={setUserId} selectedUser={initial?.user} status="active" />
@@ -232,8 +232,8 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
                       freeCount={(f) => f.imageCount - takenOn(f, workDate, initial?.id).reduce((n, t) => n + t.endPosition - t.startPosition + 1, 0)}
                     />
                   </div>
-                  <div className="flex items-end gap-2">
-                    <Field label="From image" className="min-w-0 flex-1">
+                  <div className="space-y-3">
+                    <Field label="From image" className="min-w-0">
                       <ImageNameSelect
                         folderId={r.imageFolderId}
                         position={r.startPosition === '' ? null : Number(r.startPosition)}
@@ -243,7 +243,7 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
                         onPick={({ position, name }) => updateRow(r.key, { startPosition: position, startName: name })}
                       />
                     </Field>
-                    <Field label="To image" className="min-w-0 flex-1">
+                    <Field label="To image" className="min-w-0">
                       <ImageNameSelect
                         folderId={r.imageFolderId}
                         position={r.endPosition === '' ? null : Number(r.endPosition)}
@@ -253,7 +253,9 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
                         onPick={({ position, name }) => updateRow(r.key, { endPosition: position, endName: name })}
                       />
                     </Field>
-                    <Button variant="subtleDanger" className="shrink-0" onClick={() => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((x) => x.key !== r.key)))}>{rows.length === 1 ? 'Clear' : 'Remove'}</Button>
+                    <div className="flex justify-end">
+                      <Button variant="subtleDanger" className="shrink-0" size="sm" onClick={() => setRows((rs) => (rs.length === 1 ? [newRow()] : rs.filter((x) => x.key !== r.key)))}>{rows.length === 1 ? 'Clear' : 'Remove'}</Button>
+                    </div>
                   </div>
                 </div>
                 {submitted && validation.rowErr.get(r.key) && <p className="mt-2 text-xs font-medium text-red-600">{validation.rowErr.get(r.key)}</p>}
