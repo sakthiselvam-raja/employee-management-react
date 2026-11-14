@@ -137,7 +137,7 @@ export default function ImageGallery({ images, srcFor, downloadFor, page = 1, pa
   );
 }
 
-export const IMAGE_PAGE_SIZES = [12, 24, 48, 100];
+export const IMAGE_PAGE_SIZES = [10, 20, 50, 100]; // default per page: 10
 
 /**
  * Works with a paginated API response ({ images, total }). If the server returned every image
@@ -150,7 +150,7 @@ export function pageImages(data, page, pageSize) {
 }
 
 /** "Showing 1–12 of 20 images" + page size + First / Previous / Next / Last. */
-export function ImagePager({ page, pageSize, total, onPage, onPageSize }) {
+export function ImagePager({ page, pageSize, total, onPage, onPageSize, showPageSize = false }) {
   if (!total) return null;
   const pages = Math.max(1, Math.ceil(total / pageSize));
   const from = (page - 1) * pageSize + 1;
@@ -160,15 +160,37 @@ export function ImagePager({ page, pageSize, total, onPage, onPageSize }) {
     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-3 text-sm text-slate-600">
       <span>Showing {from}–{to} of {total} images</span>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs">
+        {/* page size is fixed at 10; pass showPageSize to bring the "Per page" box back */}
+        {showPageSize && onPageSize && (
+          <label className="flex items-center gap-1.5 text-xs">
           Per page
           <select className="rounded-md border border-slate-300 bg-white px-1.5 py-1 text-sm" value={pageSize} onChange={(e) => onPageSize(Number(e.target.value))}>
             {IMAGE_PAGE_SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-        </label>
+          </label>
+        )}
         <button type="button" className={btn} disabled={page <= 1} onClick={() => onPage(1)}>« First</button>
         <button type="button" className={btn} disabled={page <= 1} onClick={() => onPage(page - 1)}>‹ Previous</button>
-        <span className="px-1">Page {page} of {pages}</span>
+        <label className="flex items-center gap-1.5 text-xs">
+          Go to page
+          {pages <= 200 ? (
+            <select className="rounded-md border border-slate-300 bg-white px-1.5 py-1 text-sm" value={page} onChange={(e) => onPage(Number(e.target.value))} aria-label="Jump to page">
+              {Array.from({ length: pages }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+          ) : (
+            <input
+              type="number"
+              min={1}
+              max={pages}
+              defaultValue={page}
+              key={page}
+              className="w-20 rounded-md border border-slate-300 bg-white px-1.5 py-1 text-sm"
+              onKeyDown={(e) => { if (e.key === 'Enter') onPage(Math.min(pages, Math.max(1, Number(e.target.value) || 1))); }}
+              aria-label="Jump to page"
+            />
+          )}
+          <span>of {pages}</span>
+        </label>
         <button type="button" className={btn} disabled={page >= pages} onClick={() => onPage(page + 1)}>Next ›</button>
         <button type="button" className={btn} disabled={page >= pages} onClick={() => onPage(pages)}>Last »</button>
       </div>

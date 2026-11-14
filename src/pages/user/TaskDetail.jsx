@@ -14,7 +14,7 @@ import { formatBytes, formatDateTime, formatWorkDate, rangeLabel } from '../../u
 
 function RangeImagesModal({ assignmentId, range, onClose }) {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(10);
   useEffect(() => { setPage(1); }, [range?.id]);
   const q = useQuery({
     queryKey: ['rangeImages', assignmentId, range?.id, page, pageSize],

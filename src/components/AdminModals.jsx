@@ -16,7 +16,7 @@ import { userMatches } from './UserPicker';
 /** Browse images of a folder (optionally only a range) as admin */
 export function FolderImagesModal({ target, onClose }) {
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(12);
+  const [pageSize, setPageSize] = useState(10);
   useEffect(() => { setPage(1); }, [target?.folderId, target?.from, target?.to]);
   const q = useQuery({
     queryKey: ['folderImages', target?.folderId, target?.from, target?.to, page, pageSize],
@@ -31,7 +31,7 @@ export function FolderImagesModal({ target, onClose }) {
       {q.isError && <ErrorBox error={q.error} />}
       {q.data && (
         <>
-          <ImageGallery images={images} srcFor={(i) => urls.admin.image(i.id)} downloadFor={(i) => urls.admin.imageDownload(i.id)} />
+          <ImageGallery images={images} srcFor={(i) => urls.admin.image(i.id)} downloadFor={(i) => urls.admin.imageDownload(i.id)} page={page} pageSize={pageSize} total={total} onPage={setPage} loading={q.isFetching} />
           <ImagePager page={page} pageSize={pageSize} total={total} onPage={setPage} onPageSize={(n) => { setPageSize(n); setPage(1); }} />
         </>
       )}

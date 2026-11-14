@@ -58,24 +58,24 @@ export default function AppShell({ nav, portalLabel, extraMenu }) {
       </aside>
 
       {/* Top bar */}
-      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 text-slate-800 shadow-sm sm:px-6">
+      <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-white/10 bg-gradient-to-r from-brand-900 via-brand-800 to-brand-700 px-4 text-white shadow-md sm:px-6">
         <div className="flex items-center gap-3 lg:hidden">
-          <button type="button" className="rounded-md p-1.5 text-slate-600 hover:bg-slate-100" onClick={() => setOpen((v) => !v)} aria-label="Menu">
+          <button type="button" className="rounded-md p-1.5 text-white hover:bg-white/15" onClick={() => setOpen((v) => !v)} aria-label="Menu">
             <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
           </button>
-          <BrandLogo />
+          <BrandLogo onDark compact />
         </div>
-        <p className="hidden text-sm font-semibold text-slate-600 lg:block">{portalLabel === 'Admin' ? 'Admin panel' : 'Employee panel'}</p>
+        <p className="hidden text-sm font-semibold tracking-wide text-blue-100 lg:block">{portalLabel === 'Admin' ? 'Admin panel' : 'Employee panel'}</p>
         <div className="flex items-center gap-3">
           {extraMenu}
           <div className="hidden text-right sm:block">
-            <p className="text-sm leading-tight font-semibold text-slate-900">{me?.fullName}</p>
-            <p className="text-xs leading-tight text-slate-500">{me?.role === 'ADMIN' ? 'Administrator' : me?.employeeId}</p>
+            <p className="text-sm leading-tight font-semibold text-white">{me?.fullName}</p>
+            <p className="text-xs leading-tight text-blue-200">{me?.role === 'ADMIN' ? 'Administrator' : me?.employeeId}</p>
           </div>
           <button
             type="button"
             onClick={() => logout.mutate()}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-800"
+            className="rounded-lg border border-white/40 bg-white/10 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white hover:text-brand-800"
           >
             Log out
           </button>
