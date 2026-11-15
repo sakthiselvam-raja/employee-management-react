@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { memo, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 
 const cx = (...c) => c.filter(Boolean).join(' ');
@@ -20,7 +20,7 @@ export function Button({ variant = 'primary', size = 'md', loading, disabled, cl
       type="button"
       disabled={disabled || loading}
       className={cx(
-        'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex items-center justify-center gap-1.5 rounded-lg font-medium transition-all duration-300 ease-out active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600/40 disabled:cursor-not-allowed disabled:opacity-50',
         variants[variant], sizes[size], className,
       )}
       {...props}
@@ -103,16 +103,16 @@ const statusText = { PENDING: 'Pending', PROCESSING: 'Processing', COMPLETED: 'C
 export const STATUS_OPTIONS = ['PENDING', 'PROCESSING', 'COMPLETED'];
 export const statusLabel = (s) => statusText[s] || s;
 
-export function StatusBadge({ status }) {
+export const StatusBadge = memo(function StatusBadge({ status }) {
   return (
     <span className={cx('inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset', statusStyles[status])}>
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       {statusText[status] || status}
     </span>
   );
-}
+});
 
-export function Badge({ children, tone = 'slate', className }) {
+export const Badge = memo(function Badge({ children, tone = 'slate', className }) {
   const tones = {
     slate: 'bg-slate-100 text-slate-700',
     brand: 'bg-brand-50 text-brand-800',
@@ -121,7 +121,7 @@ export function Badge({ children, tone = 'slate', className }) {
     amber: 'bg-amber-50 text-amber-800',
   };
   return <span className={cx('inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium', tones[tone], className)}>{children}</span>;
-}
+});
 
 /* ---------- Layout ---------- */
 export function PageHeader({ title, description, actions, back }) {
@@ -151,7 +151,7 @@ export function Card({ title, actions, children, className, bodyClass = 'p-5' })
   );
 }
 
-export function StatCard({ label, value, tone = 'slate', sub }) {
+export const StatCard = memo(function StatCard({ label, value, tone = 'slate', sub }) {
   const tones = {
     slate: ['text-slate-900', 'border-l-slate-400'],
     amber: ['text-amber-700', 'border-l-amber-500'],
@@ -161,13 +161,13 @@ export function StatCard({ label, value, tone = 'slate', sub }) {
   };
   const [text, accent] = tones[tone] || tones.slate;
   return (
-    <div className={cx('card border-l-4 px-5 py-4', accent)}>
+    <div className={cx('card border-l-4 px-5 py-4 transition-all duration-500 hover:-translate-y-0.5 hover:shadow-md', accent)}>
       <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">{label}</p>
       <p className={cx('mt-1 text-2xl font-bold tabular-nums', text)}>{value ?? '—'}</p>
       {sub && <p className="mt-0.5 text-xs text-slate-500">{sub}</p>}
     </div>
   );
-}
+});
 
 /* ---------- Modal ---------- */
 export function Modal({ open, onClose, title, children, footer, size = 'md', closeOnOutsideClick = false, headerActions }) {
@@ -188,8 +188,8 @@ export function Modal({ open, onClose, title, children, footer, size = 'md', clo
   const screen = size === 'screen'; // fills the whole browser window
 
   return createPortal(
-    <div className={cx('fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40', screen ? 'p-0' : 'p-4 sm:p-8')} onMouseDown={(e) => closeOnOutsideClick && e.target === e.currentTarget && onClose?.()}>
-      <div role="dialog" aria-modal="true" className={cx('w-full bg-white shadow-xl', screen ? 'flex h-screen flex-col rounded-none' : cx('rounded-xl', widths[size]))}>
+    <div className={cx('animate-backdrop-in fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40', screen ? 'p-0' : 'p-4 sm:p-8')} onMouseDown={(e) => closeOnOutsideClick && e.target === e.currentTarget && onClose?.()}>
+      <div role="dialog" aria-modal="true" className={cx('animate-modal-in w-full bg-white shadow-xl', screen ? 'flex h-screen flex-col rounded-none' : cx('rounded-xl', widths[size]))}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
           <h3 className="min-w-0 truncate text-base font-semibold text-slate-900">{title}</h3>
           <div className="flex shrink-0 items-center gap-1">
@@ -248,7 +248,7 @@ export function Tabs({ tabs, value, onChange }) {
   );
 }
 
-export function Pagination({ page, pageSize, total, onChange }) {
+export const Pagination = memo(function Pagination({ page, pageSize, total, onChange }) {
   const pages = Math.max(1, Math.ceil(total / pageSize));
   if (total <= pageSize) return null;
   return (
@@ -260,4 +260,4 @@ export function Pagination({ page, pageSize, total, onChange }) {
       </div>
     </div>
   );
-}
+});

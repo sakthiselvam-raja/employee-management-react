@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { adminApi } from '../api/endpoints';
 import { cx } from './ui';
@@ -9,7 +9,7 @@ import { cx } from './ui';
  * minPosition / maxPosition: only list images from / up to this position (keeps "To" after "From")
  * onPick({ position, name })
  */
-export default function ImageNameSelect({ folderId, position, name, onPick, minPosition, maxPosition, placeholder = 'Choose image…', disabled = false }) {
+const ImageNameSelect = memo(function ImageNameSelect({ folderId, position, name, onPick, minPosition, maxPosition, placeholder = 'Choose image…', disabled = false }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [dq, setDq] = useState(''); // debounced search text
@@ -63,7 +63,7 @@ export default function ImageNameSelect({ folderId, position, name, onPick, minP
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-full min-w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="animate-pop-in absolute z-30 mt-1 w-full min-w-56 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="border-b border-slate-100 p-2">
             <input autoFocus type="search" className="input py-1.5" placeholder="Search image name…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search image name" />
           </div>
@@ -93,4 +93,6 @@ export default function ImageNameSelect({ folderId, position, name, onPick, minP
       )}
     </div>
   );
-}
+});
+
+export default ImageNameSelect;

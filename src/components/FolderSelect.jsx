@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { cx } from './ui';
 import { folderLabel } from '../utils/format';
 
@@ -6,7 +6,7 @@ import { folderLabel } from '../utils/format';
  * Searchable folder picker (replaces the plain <select>).
  * folders: upload.imageFolders; freeCount(folder) -> number of images still free on the chosen date (optional)
  */
-export default function FolderSelect({ folders, value, onChange, freeCount, placeholder = 'Choose folder…' }) {
+const FolderSelect = memo(function FolderSelect({ folders, value, onChange, freeCount, placeholder = 'Choose folder…' }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const box = useRef(null);
@@ -43,7 +43,7 @@ export default function FolderSelect({ folders, value, onChange, freeCount, plac
       </button>
 
       {open && (
-        <div className="absolute z-30 mt-1 w-full min-w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+        <div className="animate-pop-in absolute z-30 mt-1 w-full min-w-64 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
           <div className="border-b border-slate-100 p-2">
             <input autoFocus type="search" className="input py-1.5" placeholder="Search folder name…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search folders" />
           </div>
@@ -73,4 +73,6 @@ export default function FolderSelect({ folders, value, onChange, freeCount, plac
       )}
     </div>
   );
-}
+});
+
+export default FolderSelect;

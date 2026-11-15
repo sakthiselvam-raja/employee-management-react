@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../api/endpoints';
 import { errorMessage, fileUrl } from '../../api/client';
@@ -202,6 +202,41 @@ function BulkUploadModal({ open, onClose }) {
   );
 }
 
+/** One table row. memo: ticking a checkbox or opening a dialog only re-renders the rows that changed. */
+const UserRow = memo(function UserRow({ u, checked, onToggle, onEdit, onConfirm }) {
+  return (
+    <tr className={u.isActive ? '' : 'bg-slate-50/70 text-slate-500'}>
+      <td className="td">
+        <input
+          type="checkbox"
+          className="accent-brand-700 disabled:opacity-30"
+          checked={checked}
+          disabled={u.assignmentCount > 0}
+          onChange={() => onToggle(u.id)}
+          aria-label={`Select ${u.fullName}`}
+          title={u.assignmentCount > 0 ? 'Has assignment history — deactivate instead of deleting' : undefined}
+        />
+      </td>
+      <td className="td font-mono text-xs">{u.employeeId}</td>
+      <td className="td font-medium text-slate-800">{u.fullName}</td>
+      <td className="td">{u.email}</td>
+      <td className="td">{u.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}</td>
+      <td className="td tabular-nums">{u.assignmentCount}</td>
+      <td className="td text-xs">{formatDateTime(u.lastLoginAt)}</td>
+      <td className="td">
+        <div className="flex flex-wrap justify-end gap-1">
+          <Button size="sm" variant="ghost" onClick={() => onEdit(u)}>Edit</Button>
+          <Button size="sm" variant="ghost" onClick={() => onConfirm({ type: 'reset', user: u })}>Reset password</Button>
+          <Button size="sm" variant="ghost" onClick={() => onConfirm({ type: 'toggle', user: u })}>{u.isActive ? 'Deactivate' : 'Activate'}</Button>
+          {u.assignmentCount === 0 && (
+            <Button size="sm" variant="subtleDanger" onClick={() => onConfirm({ type: 'delete', user: u })}>Delete</Button>
+          )}
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 export default function UsersPage() {
   const qc = useQueryClient();
   const toast = useToast();
@@ -258,7 +293,7 @@ export default function UsersPage() {
   // only users without assignment history can be deleted
   const deletable = (rows || []).filter((u) => u.assignmentCount === 0);
   const allTicked = deletable.length > 0 && deletable.every((u) => selected.has(u.id));
-  const toggleOne = (id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  const toggleOne = useCallback((id) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; }), []);
   const toggleAll = () => setSelected(allTicked ? new Set() : new Set(deletable.map((u) => u.id)));
 
   const bulkDel = useMutation({
@@ -343,35 +378,7 @@ export default function UsersPage() {
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {rows.map((u) => (
-                  <tr key={u.id} className={u.isActive ? '' : 'bg-slate-50/70 text-slate-500'}>
-                    <td className="td">
-                      <input
-                        type="checkbox"
-                        className="accent-brand-700 disabled:opacity-30"
-                        checked={selected.has(u.id)}
-                        disabled={u.assignmentCount > 0}
-                        onChange={() => toggleOne(u.id)}
-                        aria-label={`Select ${u.fullName}`}
-                        title={u.assignmentCount > 0 ? 'Has assignment history — deactivate instead of deleting' : undefined}
-                      />
-                    </td>
-                    <td className="td font-mono text-xs">{u.employeeId}</td>
-                    <td className="td font-medium text-slate-800">{u.fullName}</td>
-                    <td className="td">{u.email}</td>
-                    <td className="td">{u.isActive ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}</td>
-                    <td className="td tabular-nums">{u.assignmentCount}</td>
-                    <td className="td text-xs">{formatDateTime(u.lastLoginAt)}</td>
-                    <td className="td">
-                      <div className="flex flex-wrap justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => setEditing(u)}>Edit</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'reset', user: u })}>Reset password</Button>
-                        <Button size="sm" variant="ghost" onClick={() => setConfirm({ type: 'toggle', user: u })}>{u.isActive ? 'Deactivate' : 'Activate'}</Button>
-                        {u.assignmentCount === 0 && (
-                          <Button size="sm" variant="subtleDanger" onClick={() => setConfirm({ type: 'delete', user: u })}>Delete</Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  <UserRow key={u.id} u={u} checked={selected.has(u.id)} onToggle={toggleOne} onEdit={setEditing} onConfirm={setConfirm} />
                 ))}
               </tbody>
             </table>

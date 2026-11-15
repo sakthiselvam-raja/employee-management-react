@@ -1,7 +1,8 @@
-import { useState } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { Suspense, useEffect, useState } from 'react';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useMe, useLogout } from '../hooks/useAuth';
-import { cx } from './ui';
+import { PageLoader, cx } from './ui';
+import { prefetchPortal, prefetchRoute } from '../routePrefetch';
 import BrandLogo from './BrandLogo';
 
 const NAV_ICONS = {
@@ -21,6 +22,10 @@ export default function AppShell({ nav, portalLabel, extraMenu }) {
   const { data: me } = useMe();
   const logout = useLogout();
   const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+
+  // download the other pages quietly in the background so they open instantly
+  useEffect(() => { if (me?.role) prefetchPortal(me.role); }, [me?.role]);
 
   const links = (
     <nav className="flex flex-col gap-1">
@@ -30,8 +35,10 @@ export default function AppShell({ nav, portalLabel, extraMenu }) {
           to={item.to}
           end={item.end}
           onClick={() => setOpen(false)}
+          onMouseEnter={() => prefetchRoute(item.to)}
+          onFocus={() => prefetchRoute(item.to)}
           className={({ isActive }) => cx(
-            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
+            'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors duration-300',
             isActive
               ? 'bg-brand-600 text-white shadow-sm shadow-black/30'
               : 'text-slate-300 hover:bg-white/10 hover:text-white',
@@ -86,7 +93,12 @@ export default function AppShell({ nav, portalLabel, extraMenu }) {
       {open && <div className="bg-[#0b1730] px-3 py-3 shadow-lg lg:hidden">{links}</div>}
 
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-        <Outlet />
+        {/* a new page fades in softly; key = path, so it replays on every page change */}
+        <div key={pathname} className="animate-page-in">
+          <Suspense fallback={<PageLoader />}>
+            <Outlet />
+          </Suspense>
+        </div>
       </main>
     </div>
   );

@@ -50,7 +50,7 @@ export default function LoginPage({ role }) {
         <div className="pointer-events-none absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-white/5" />
       </div>
 
-      <div className="flex flex-col items-center justify-center bg-white px-4 py-12">
+      <div className="animate-page-in flex flex-col items-center justify-center bg-white px-4 py-12">
         <BrandLogo className="mb-8 lg:hidden" />
         <form onSubmit={submit} className="w-full max-w-sm">
           <p className={`mb-2 inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isAdmin ? 'bg-[#0b1730] text-white' : 'bg-brand-50 text-brand-800'}`}>

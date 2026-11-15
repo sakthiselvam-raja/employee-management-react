@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { fileUrl } from '../api/client';
 import { formatBytes } from '../utils/format';
 
 /** Plain <img> (the browser loads the API URL directly) with a placeholder + spinner until it has loaded. */
-function GalleryImage({ src, alt, className, wrapClassName = '', skeleton = false, label = '', lazy = false }) {
+const GalleryImage = memo(function GalleryImage({ src, alt, className, wrapClassName = '', skeleton = false, label = '', lazy = false }) {
   const [state, setState] = useState('loading'); // loading | ready | failed
   return (
     <span className={`${wrapClassName} relative flex items-center justify-center`}>
@@ -29,7 +29,26 @@ function GalleryImage({ src, alt, className, wrapClassName = '', skeleton = fals
       {state === 'failed' && <span className="absolute inset-0 flex items-center justify-center px-2 text-center text-xs text-slate-500">Could not load image</span>}
     </span>
   );
-}
+});
+
+/** One thumbnail of the grid. memo: it only re-renders when its own image changes, not when the viewer or loading state does. */
+const Thumb = memo(function Thumb({ img, index, src, onOpen }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(index)}
+      className="animate-fade-in group overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-left transition-colors duration-300 hover:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+    >
+      <div className="aspect-[4/3] overflow-hidden bg-slate-100">
+        <GalleryImage src={src} alt={img.fileName} wrapClassName="h-full w-full bg-slate-100" skeleton lazy className="h-full w-full object-cover transition-transform group-hover:scale-105" />
+      </div>
+      <div className="flex items-center gap-1.5 px-2 py-1.5">
+        <span className="rounded bg-slate-200 px-1 text-[11px] font-semibold text-slate-700 tabular-nums">#{img.position}</span>
+        <span className="truncate text-xs text-slate-600">{img.fileName}</span>
+      </div>
+    </button>
+  );
+});
 
 /**
  * Thumbnail grid + full-screen viewer.
@@ -95,20 +114,7 @@ export default function ImageGallery({ images, srcFor, downloadFor, page = 1, pa
       )}
       <div className={`grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 ${loading ? 'opacity-60' : ''}`}>
         {images.map((img, i) => (
-          <button
-            key={img.id}
-            type="button"
-            onClick={() => setIndex(i)}
-            className="group overflow-hidden rounded-lg border border-slate-200 bg-slate-50 text-left hover:border-brand-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-          >
-            <div className="aspect-[4/3] overflow-hidden bg-slate-100">
-              <GalleryImage src={fileUrl(srcFor(img))} alt={img.fileName} wrapClassName="h-full w-full bg-slate-100" skeleton lazy className="h-full w-full object-cover transition-transform group-hover:scale-105" />
-            </div>
-            <div className="flex items-center gap-1.5 px-2 py-1.5">
-              <span className="rounded bg-slate-200 px-1 text-[11px] font-semibold text-slate-700 tabular-nums">#{img.position}</span>
-              <span className="truncate text-xs text-slate-600">{img.fileName}</span>
-            </div>
-          </button>
+          <Thumb key={img.id} img={img} index={i} src={fileUrl(srcFor(img))} onOpen={setIndex} />
         ))}
       </div>
       </div>

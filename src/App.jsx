@@ -1,18 +1,21 @@
+import { Suspense, lazy } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppShell from './components/AppShell';
 import { PageLoader } from './components/ui';
 import { useMe } from './hooks/useAuth';
+import { pageLoaders } from './routePrefetch';
 import LoginPage from './pages/LoginPage';
-import AdminDashboard from './pages/admin/Dashboard';
-import UsersPage from './pages/admin/Users';
-import UploadsPage from './pages/admin/Uploads';
-import UploadDetailPage from './pages/admin/UploadDetail';
-import AssignmentsPage from './pages/admin/Assignments';
-import HistoryPage from './pages/admin/History';
-import MyTasksPage from './pages/user/MyTasks';
-import TaskDetailPage from './pages/user/TaskDetail';
-import ChangePasswordButton from './pages/user/ChangePassword';
+// Pages load on demand (code splitting) — the login screen and layout stay in the first bundle.
+const AdminDashboard = lazy(pageLoaders.dashboard);
+const UsersPage = lazy(pageLoaders.users);
+const UploadsPage = lazy(pageLoaders.uploads);
+const UploadDetailPage = lazy(pageLoaders.uploadDetail);
+const AssignmentsPage = lazy(pageLoaders.assignments);
+const HistoryPage = lazy(pageLoaders.history);
+const MyTasksPage = lazy(pageLoaders.myTasks);
+const TaskDetailPage = lazy(pageLoaders.taskDetail);
+// import ChangePasswordButton from './pages/user/ChangePassword';
 
 const adminNav = [
   { to: '/admin', label: 'Dashboard', end: true },
@@ -41,6 +44,7 @@ function HomeRedirect() {
 
 export default function App() {
   return (
+    <Suspense fallback={<PageLoader />}>
     <Routes>
       <Route path="/" element={<HomeRedirect />} />
       <Route path={`${EMP}`} element={<HomeRedirect />} />
@@ -73,5 +77,6 @@ export default function App() {
 
       <Route path="*" element={<HomeRedirect />} />
     </Routes>
+    </Suspense>
   );
 }
