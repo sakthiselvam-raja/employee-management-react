@@ -11,14 +11,17 @@ const PARTS = [
   { key: 'zips', label: 'Old ZIP files not yet deleted', color: 'bg-brand-600', onlyIfAny: true },
 ];
 
-/** File storage + PostgreSQL database size, shown on the admin dashboard. */
+/** File storage + PostgreSQL database size (size only), shown on the admin dashboard. */
 export default function StorageUsageCard() {
-  const q = useQuery({ queryKey: ['dashboard', 'storage'], queryFn: adminApi.dashboardStorage, staleTime: 60_000 });
+  const q = useQuery({ queryKey: ['dashboard', 'storage'], queryFn: adminApi.dashboardStorage, staleTime: 0, refetchOnMount: 'always' }); // fresh whenever the dashboard opens
   const d = q.data;
-  const parts = d ? PARTS.filter((p) => !p.onlyIfAny || (d.files[p.key]?.count ?? 0) > 0) : PARTS;
+  const parts = d?.files ? PARTS.filter((p) => !p.onlyIfAny || (d.files[p.key]?.count ?? 0) > 0) : PARTS;
 
   return (
-    <Card title="Storage &amp; database">
+    <Card
+      title="Storage &amp; database"
+      actions={<button type="button" className="link text-xs" onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? 'Updating…' : '↻ Refresh'}</button>}
+    >
       {q.isLoading && <p className="text-sm text-slate-500">Calculating sizes…</p>}
       {q.isError && <ErrorBox error={q.error} />}
       {d && (
@@ -26,40 +29,34 @@ export default function StorageUsageCard() {
           {/* Files */}
           <div>
             <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">Uploaded + submission files</p>
-            <p className="mt-1 text-2xl font-semibold text-slate-900">{formatBytes(d.totalBytes)}</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{formatBytes(d.totalBytes || 0)}</p>
             <div className="mt-3 flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
               {parts.map((p) => (
-                <div key={p.key} className={p.color} style={{ width: `${d.totalBytes ? ((d.files[p.key]?.bytes || 0) / d.totalBytes) * 100 : 0}%` }} />
+                <div key={p.key} className={p.color} style={{ width: `${d.totalBytes ? ((d.files?.[p.key]?.bytes || 0) / d.totalBytes) * 100 : 0}%` }} />
               ))}
             </div>
             <ul className="mt-3 space-y-1.5 text-sm">
               {parts.map((p) => (
                 <li key={p.key} className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />{p.label} <span className="text-xs text-slate-400">({d.files[p.key]?.count ?? 0})</span></span>
-                  <span className="font-medium text-slate-800 tabular-nums">{formatBytes(d.files[p.key]?.bytes || 0)}</span>
+                  <span className="flex items-center gap-2 text-slate-600"><span className={`h-2.5 w-2.5 rounded-full ${p.color}`} />{p.label} <span className="text-xs text-slate-400">({d.files?.[p.key]?.count ?? 0})</span></span>
+                  <span className="font-medium text-slate-800 tabular-nums">{formatBytes(d.files?.[p.key]?.bytes || 0)}</span>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Database */}
+          {/* Database: size only */}
           <div>
             <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">Database size</p>
             {d.database ? (
               <>
-                <p className="mt-1 text-2xl font-semibold text-slate-900">{formatBytes(d.database.appBytes ?? d.database.bytes)}</p>
-                <p className="text-xs text-slate-500">
-                  App data (tables + indexes){d.database.rows !== undefined && ` · ${d.database.rows.toLocaleString()} rows in ${d.database.tables} tables`}
-                </p>
-                <p className="mt-1 text-xs text-slate-400" title="Includes PostgreSQL's own system tables, so it is never zero even for an empty database">
-                  Whole database on disk: {formatBytes(d.database.bytes)} · PostgreSQL · {d.database.name}
-                </p>
+                <p className="mt-1 text-2xl font-semibold text-slate-900">{formatBytes(d.database.bytes)}</p>
+                <p className="text-xs text-slate-500">PostgreSQL · {d.database.name}</p>
               </>
             ) : (
               <p className="mt-2 text-sm text-slate-500">Database size is not available.</p>
             )}
           </div>
-
         </div>
       )}
     </Card>

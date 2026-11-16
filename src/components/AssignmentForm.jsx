@@ -212,7 +212,9 @@ export default function AssignmentForm({ upload, initial, defaultDate, prefill, 
       <div>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-medium text-slate-700">Image ranges</p>
+          {/* "+ Add range" hidden for now (frontend only) — remove the comment markers to show it again
           <Button size="sm" variant="secondary" onClick={addRange} disabled={!upload.imageFolders.length}>+ Add range</Button>
+          */}
         </div>
         {rows.length === 0 && <p className="text-sm text-slate-500">{upload.imageFolders.length ? 'No image range added.' : 'This ZIP has no image folders.'}</p>}
         {rows.length > 0 && <p className="mb-2 text-xs text-slate-500">Leave the range empty to assign only Excel sheets.</p>}
