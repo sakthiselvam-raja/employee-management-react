@@ -6,7 +6,10 @@ import { useMe } from '../../hooks/useAuth';
 import {
   Button, EmptyState, ErrorBox, PageHeader, PageLoader, STATUS_OPTIONS, StatCard, StatusBadge, statusLabel,
 } from '../../components/ui';
-import { formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
+import { folderLabel, formatDateTime, formatWorkDate, rangeLabel, todayISO } from '../../utils/format';
+
+// colour bar on top of a card, by status
+const ACCENT = { PENDING: 'border-t-amber-400', PROCESSING: 'border-t-sky-500', COMPLETED: 'border-t-emerald-500' };
 
 export default function MyTasksPage() {
   const { data: me } = useMe();
@@ -53,21 +56,68 @@ export default function MyTasksPage() {
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {list.map((a) => (
-          <Link key={a.id} to={`/emp-portal/tasks/${a.id}`} className="card group flex flex-col p-5 transition-shadow hover:shadow-md">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="text-xs font-medium tracking-wide text-slate-500 uppercase">{formatWorkDate(a.workDate)}</p>
-                <p className="mt-0.5 line-clamp-1 font-semibold text-slate-900 group-hover:text-brand-700">{a.zipUpload.originalName}</p>
+          <Link
+            key={a.id}
+            to={`/emp-portal/tasks/${a.id}`}
+            className={`card group flex flex-col overflow-hidden border-t-4 transition-all duration-500 hover:-translate-y-1 hover:shadow-lg ${ACCENT[a.status] || 'border-t-slate-300'}`}
+          >
+            <div className="flex-1 p-5">
+              {/* date + status */}
+              <div className="flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                  📅 {formatWorkDate(a.workDate)}
+                </span>
+                <StatusBadge status={a.status} />
               </div>
-              <StatusBadge status={a.status} />
+
+              {/* ZIP name */}
+              <h3 className="mt-3 flex items-center gap-2 text-base font-semibold text-slate-900 transition-colors group-hover:text-brand-700">
+                <span aria-hidden="true">📦</span>
+                <span className="line-clamp-1">{a.zipUpload.originalName}</span>
+              </h3>
+
+              {/* numbers */}
+              <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                <div className="rounded-lg bg-slate-50 px-2 py-2.5">
+                  <p className="text-lg font-semibold text-slate-900 tabular-nums">{a.excelFiles.length}</p>
+                  <p className="text-[11px] text-slate-500">📊 Excel</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-2 py-2.5">
+                  <p className="text-lg font-semibold text-slate-900 tabular-nums">{a.totalImages}</p>
+                  <p className="text-[11px] text-slate-500">🖼️ Images</p>
+                </div>
+                <div className="rounded-lg bg-slate-50 px-2 py-2.5">
+                  <p className="text-lg font-semibold text-slate-900 tabular-nums">{a.submissionCount}</p>
+                  <p className="text-[11px] text-slate-500">📤 Sent</p>
+                </div>
+              </div>
+
+              {/* folders */}
+              {a.imageRanges.length > 0 && (
+                <div className="mt-4 space-y-1.5">
+                  <p className="text-[11px] font-semibold tracking-wide text-slate-400 uppercase">Image folders</p>
+                  {a.imageRanges.slice(0, 2).map((r) => (
+                    <div key={r.id} className="rounded-lg border border-slate-200 px-3 py-2" title={`${folderLabel(r)} · ${rangeLabel(r)}`}>
+                      <p className="truncate text-sm font-medium text-slate-800">📁 {folderLabel(r)}</p>
+                      <p className="truncate text-xs text-slate-500">{rangeLabel(r)} · {r.count} image(s)</p>
+                    </div>
+                  ))}
+                  {a.imageRanges.length > 2 && <p className="text-xs text-slate-400">+ {a.imageRanges.length - 2} more folder(s)</p>}
+                </div>
+              )}
+
+              {a.adminNotes && (
+                <p className="mt-4 line-clamp-2 rounded-lg border-l-2 border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  <span className="font-semibold">Admin note: </span>{a.adminNotes}
+                </p>
+              )}
             </div>
-            <div className="mt-4 space-y-1.5 text-sm text-slate-600">
-              <p>📊 {a.excelFiles.length} Excel sheet(s)</p>
-              <p>🖼️ {a.totalImages} image(s){a.imageRanges.length > 0 && <span className="text-slate-400"> — {a.imageRanges.map((r) => `${r.folderName} ${rangeLabel(r)}`).join(', ')}</span>}</p>
-              {a.submissionCount > 0 && <p>📤 {a.submissionCount} upload(s) sent</p>}
+
+            {/* footer */}
+            <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50/60 px-5 py-3 text-xs">
+              <span className="text-slate-500">{a.completedAt ? `Completed ${formatDateTime(a.completedAt)}` : `Assigned ${formatDateTime(a.createdAt)}`}</span>
+              <span className="font-medium text-brand-700 transition-transform duration-300 group-hover:translate-x-1">Open task →</span>
             </div>
-            {a.adminNotes && <p className="mt-3 line-clamp-2 rounded-md bg-slate-50 px-2 py-1.5 text-xs text-slate-600">{a.adminNotes}</p>}
-            <p className="mt-auto pt-4 text-xs text-slate-400">{a.completedAt ? `Completed ${formatDateTime(a.completedAt)}` : `Assigned ${formatDateTime(a.createdAt)}`}</p>
           </Link>
         ))}
       </div>

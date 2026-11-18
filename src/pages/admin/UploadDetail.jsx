@@ -12,7 +12,7 @@ import {
 } from '../../components/ui';
 import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
-import { formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel } from '../../utils/format';
+import { folderLabel, formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel } from '../../utils/format';
 
 /** Number of distinct images covered by a set of ranges (ranges of different dates may overlap). */
 function coveredCount(ranges) {
@@ -66,6 +66,7 @@ export default function UploadDetailPage() {
   const excelInput = useRef(null);
   const [excelProgress, setExcelProgress] = useState(0);
   const [removeExcel, setRemoveExcel] = useState(null);
+  const [delAssign, setDelAssign] = useState(null); // assignment waiting for delete confirmation
 
   const refreshUpload = () => ['upload', 'uploads', 'assignments', 'dashboard'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
   const addExcel = useMutation({
@@ -73,6 +74,11 @@ export default function UploadDetailPage() {
     onSuccess: (r) => { refreshUpload(); toast.success(`${r.added} Excel sheet(s) added`); },
     onError: (e) => toast.error(errorMessage(e)),
     onSettled: () => { setExcelProgress(0); if (excelInput.current) excelInput.current.value = ''; },
+  });
+  const delAssignment = useMutation({
+    mutationFn: (a) => adminApi.deleteAssignment(a.id),
+    onSuccess: () => { refreshUpload(); setDelAssign(null); toast.success('Assignment deleted'); },
+    onError: (e) => { setDelAssign(null); toast.error(errorMessage(e)); },
   });
   const delExcel = useMutation({
     mutationFn: (e) => adminApi.removeExcel(id, e.id, true),
@@ -256,14 +262,19 @@ export default function UploadDetailPage() {
                   <button type="button" className="min-w-0 text-left" onClick={() => setDetailId(a.id)}>
                     <p className="truncate text-sm font-medium text-slate-900 hover:text-brand-700">{a.user.fullName}</p>
                     <p className="text-xs font-medium text-brand-700">Employee ID: {a.user.employeeId}</p>
-                    <p className="text-xs text-slate-500">
-                      {a.excelFiles.length} Excel · {a.totalImages} images
-                      {a.imageRanges.length > 0 && ` (${a.imageRanges.map((r) => `${r.folderName} ${rangeLabel(r)}`).join(', ')})`}
-                    </p>
+                    <p className="text-xs text-slate-500">{a.excelFiles.length} Excel · {a.totalImages} images</p>
+                    {a.imageRanges.map((r) => (
+                      <p key={r.id} className="truncate text-xs text-slate-500" title={`${folderLabel(r)} · ${rangeLabel(r)}`}>
+                        📁 <span className="font-medium text-slate-700">{folderLabel(r)}</span> · {rangeLabel(r)} ({r.count})
+                      </p>
+                    ))}
                   </button>
                   <div className="flex shrink-0 flex-col items-end gap-1">
                     <StatusBadge status={a.status} />
-                    <button type="button" className="link text-xs" onClick={() => setEditing(a)}>Edit</button>
+                    <div className="flex items-center gap-3">
+                      <button type="button" className="link text-xs" onClick={() => setEditing(a)}>Edit</button>
+                      <button type="button" className="text-xs font-medium text-red-600 hover:underline" onClick={() => setDelAssign(a)}>Delete</button>
+                    </div>
                   </div>
                 </li>
               ))}
@@ -274,6 +285,20 @@ export default function UploadDetailPage() {
       </div>
 
       <FolderImagesModal target={browse} onClose={() => setBrowse(null)} />
+      <ConfirmModal
+        open={Boolean(delAssign)}
+        onClose={() => setDelAssign(null)}
+        onConfirm={() => delAssignment.mutate(delAssign)}
+        loading={delAssignment.isPending}
+        danger
+        title="Delete assignment"
+        confirmText="Delete"
+        message={delAssign && `Delete ${delAssign.user.fullName}'s assignment (${formatWorkDate(delAssign.workDate)})? Files the user uploaded for it are deleted too. The ZIP's own files are kept.`}
+      >
+        {delAssign && delAssign.status !== 'COMPLETED' && (
+          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">This assignment is still {delAssign.status.toLowerCase()}.</p>
+        )}
+      </ConfirmModal>
       <ConfirmModal
         open={Boolean(removeExcel)}
         onClose={() => setRemoveExcel(null)}
