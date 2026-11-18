@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import RefreshButton from '../../components/RefreshButton';
 import { useQuery } from '@tanstack/react-query';
 import { userApi } from '../../api/endpoints';
 import { useMe } from '../../hooks/useAuth';
@@ -18,7 +19,7 @@ export default function MyTasksPage() {
   const [status, setStatus] = useState('');
 
   const params = { date: allDates ? undefined : date, status: status || undefined };
-  const q = useQuery({ queryKey: ['myAssignments', params], queryFn: () => userApi.assignments(params) });
+  const q = useQuery({ queryKey: ['myAssignments', params], queryFn: () => userApi.assignments(params), staleTime: 0, refetchOnMount: 'always' }); // always reload when the page opens
   const list = q.data || [];
   const count = (s) => list.filter((a) => a.status === s).length;
 
@@ -29,7 +30,7 @@ export default function MyTasksPage() {
         description={allDates ? 'All work assigned to you' : `Work assigned to you for ${formatWorkDate(date)}`}
         actions={(
           <>
-            <Button variant="secondary" onClick={() => q.refetch()} loading={q.isFetching}>⟳ Refresh</Button>
+            <RefreshButton onClick={() => q.refetch()} loading={q.isFetching} updatedAt={q.dataUpdatedAt} />
             <label className="flex items-center gap-2 text-sm text-slate-600">
               <input type="checkbox" className="accent-brand-700" checked={allDates} onChange={(e) => setAllDates(e.target.checked)} /> All dates
             </label>

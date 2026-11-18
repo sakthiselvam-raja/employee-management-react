@@ -40,11 +40,13 @@ export default function AdminDashboard() {
     queryKey: ['dashboard', date, page, debounced],
     queryFn: () => adminApi.dashboard(date, { page, pageSize: PAGE_SIZE, search: debounced || undefined }),
     placeholderData: keepPreviousData,
+    staleTime: 0, refetchOnMount: 'always', // always reload when the page opens
   });
   const subQ = useQuery({
     queryKey: ['dashboard', 'submissions', subPage],
     queryFn: () => adminApi.dashboardSubmissions({ page: subPage, pageSize: SUB_SIZE }),
     placeholderData: keepPreviousData,
+    staleTime: 0, refetchOnMount: 'always', // always reload when the page opens
   });
   const d = q.data;
   const subs = subQ.data;
@@ -57,7 +59,7 @@ export default function AdminDashboard() {
         actions={(
           <>
             <input type="date" className="input w-auto" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setPage(1); } }} />
-            <RefreshButton onClick={() => qc.invalidateQueries({ queryKey: ['dashboard'] })} loading={q.isFetching || subQ.isFetching} />
+            <RefreshButton onClick={() => qc.invalidateQueries({ queryKey: ['dashboard'] })} loading={q.isFetching || subQ.isFetching} updatedAt={Math.max(q.dataUpdatedAt, subQ.dataUpdatedAt)} />
           </>
         )}
       />

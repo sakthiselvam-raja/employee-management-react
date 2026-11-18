@@ -92,6 +92,7 @@ export default function AssignmentsPage() {
     queryKey: ['assignments', apiParams],
     queryFn: () => adminApi.assignmentsPage(apiParams),
     placeholderData: keepPreviousData,
+    staleTime: 0, refetchOnMount: 'always', // always reload when the page opens
   });
 
   // after deleting the last row of a page, step back
@@ -135,7 +136,7 @@ export default function AssignmentsPage() {
             >
               ⬇ Export Excel
             </LinkButton>
-            <RefreshButton onClick={() => q.refetch()} loading={q.isFetching} />
+            <RefreshButton onClick={() => q.refetch()} loading={q.isFetching} updatedAt={q.dataUpdatedAt} />
           </>
         )}
       />

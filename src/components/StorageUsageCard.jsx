@@ -20,7 +20,12 @@ export default function StorageUsageCard() {
   return (
     <Card
       title="Storage &amp; database"
-      actions={<button type="button" className="link text-xs" onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? 'Updating…' : '↻ Refresh'}</button>}
+      actions={(
+        <span className="flex items-center gap-2 text-xs text-slate-500">
+          {q.dataUpdatedAt > 0 && !q.isFetching && <span>Last updated {new Date(q.dataUpdatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>}
+          <button type="button" className="link" onClick={() => q.refetch()} disabled={q.isFetching}>{q.isFetching ? 'Updating…' : '↻ Refresh'}</button>
+        </span>
+      )}
     >
       {q.isLoading && <p className="text-sm text-slate-500">Calculating sizes…</p>}
       {q.isError && <ErrorBox error={q.error} />}
