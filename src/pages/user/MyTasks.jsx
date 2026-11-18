@@ -19,7 +19,7 @@ export default function MyTasksPage() {
   const [status, setStatus] = useState('');
 
   const params = { date: allDates ? undefined : date, status: status || undefined };
-  const q = useQuery({ queryKey: ['myAssignments', params], queryFn: () => userApi.assignments(params), staleTime: 0, refetchOnMount: 'always' }); // always reload when the page opens
+  const q = useQuery({ queryKey: ['myAssignments', params], queryFn: () => userApi.assignments(params) });
   const list = q.data || [];
   const count = (s) => list.filter((a) => a.status === s).length;
 

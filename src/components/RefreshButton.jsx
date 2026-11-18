@@ -1,21 +1,13 @@
-import { useRef } from 'react';
+import LastUpdated from './LastUpdated';
 
 /**
  * Round icon button that reloads the data on the page; the icon spins while loading.
- * updatedAt (ms timestamp, e.g. react-query's dataUpdatedAt): shows "Last updated 10:32:05 AM" beside the button.
+ * updatedAt (ms timestamp, e.g. react-query's dataUpdatedAt): shows "Last updated 10:32:05 AM" (time of the last API call) beside the button.
  */
 export default function RefreshButton({ onClick, loading, label = 'Refresh', updatedAt }) {
-  // keep the last real time while a new set of data is loading (updatedAt is 0 until it arrives)
-  const last = useRef(0);
-  if (updatedAt) last.current = updatedAt;
-
   return (
     <span className="inline-flex items-center gap-2">
-      {last.current > 0 && (
-        <span className="hidden text-xs text-slate-500 sm:inline" aria-live="polite">
-          {loading ? 'Updating…' : `Last updated ${new Date(last.current).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
-        </span>
-      )}
+      <LastUpdated updatedAt={updatedAt} loading={loading} className="hidden text-xs text-slate-500 sm:inline" />
       <button
         type="button"
         onClick={onClick}

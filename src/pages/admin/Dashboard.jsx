@@ -40,13 +40,11 @@ export default function AdminDashboard() {
     queryKey: ['dashboard', date, page, debounced],
     queryFn: () => adminApi.dashboard(date, { page, pageSize: PAGE_SIZE, search: debounced || undefined }),
     placeholderData: keepPreviousData,
-    staleTime: 0, refetchOnMount: 'always', // always reload when the page opens
   });
   const subQ = useQuery({
     queryKey: ['dashboard', 'submissions', subPage],
     queryFn: () => adminApi.dashboardSubmissions({ page: subPage, pageSize: SUB_SIZE }),
     placeholderData: keepPreviousData,
-    staleTime: 0, refetchOnMount: 'always', // always reload when the page opens
   });
   const d = q.data;
   const subs = subQ.data;
