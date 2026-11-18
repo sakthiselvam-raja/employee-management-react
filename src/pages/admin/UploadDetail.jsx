@@ -14,6 +14,9 @@ import { DeleteUploadModal } from './Uploads';
 import { textMatches } from '../../components/UserPicker';
 import { folderLabel, formatBytes, formatDateTime, formatWorkDate, freeRanges, rangeLabel } from '../../utils/format';
 
+/** "Priya Nair" -> "PN" (avatar letters) */
+const initials = (name) => String(name || '?').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('');
+
 /** Number of distinct images covered by a set of ranges (ranges of different dates may overlap). */
 function coveredCount(ranges) {
   const sorted = [...ranges].sort((a, b) => a.startPosition - b.startPosition);
@@ -256,29 +259,52 @@ export default function UploadDetailPage() {
 
           <Card title={`Assignments (${s.total})`} bodyClass="">
             {dayAssignments.length === 0 && <p className="px-5 py-8 text-center text-sm text-slate-500">{assignQ.isFetching ? 'Loading…' : 'Nothing has been assigned from this ZIP yet.'}</p>}
-            <ul className="divide-y divide-slate-100">
+            <div className="space-y-3 p-4">
               {dayAssignments.map((a) => (
-                <li key={a.id} className="flex items-start justify-between gap-2 px-5 py-3">
-                  <button type="button" className="min-w-0 text-left" onClick={() => setDetailId(a.id)}>
-                    <p className="truncate text-sm font-medium text-slate-900 hover:text-brand-700">{a.user.fullName}</p>
-                    <p className="text-xs font-medium text-brand-700">Employee ID: {a.user.employeeId}</p>
-                    <p className="text-xs text-slate-500">{a.excelFiles.length} Excel · {a.totalImages} images</p>
-                    {a.imageRanges.map((r) => (
-                      <p key={r.id} className="truncate text-xs text-slate-500" title={`${folderLabel(r)} · ${rangeLabel(r)}`}>
-                        📁 <span className="font-medium text-slate-700">{folderLabel(r)}</span> · {rangeLabel(r)} ({r.count})
-                      </p>
-                    ))}
-                  </button>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <StatusBadge status={a.status} />
-                    <div className="flex items-center gap-3">
-                      <button type="button" className="link text-xs" onClick={() => setEditing(a)}>Edit</button>
-                      <button type="button" className="text-xs font-medium text-red-600 hover:underline" onClick={() => setDelAssign(a)}>Delete</button>
+                <div key={a.id} className="animate-fade-in overflow-hidden rounded-xl border border-slate-200 bg-white transition-shadow duration-300 hover:shadow-md">
+                  <div className="p-4">
+                    {/* who + status */}
+                    <div className="flex items-start justify-between gap-3">
+                      <button type="button" className="flex min-w-0 items-center gap-3 text-left" onClick={() => setDetailId(a.id)}>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-semibold text-brand-800">{initials(a.user.fullName)}</span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-slate-900 hover:text-brand-700">{a.user.fullName}</span>
+                          <span className="mt-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600">{a.user.employeeId}</span>
+                        </span>
+                      </button>
+                      <StatusBadge status={a.status} />
                     </div>
+
+                    {/* date + counts */}
+                    <div className="mt-3 flex flex-wrap gap-1.5 text-xs text-slate-600">
+                      <span className="rounded-md bg-slate-50 px-2 py-1">📅 {formatWorkDate(a.workDate)}</span>
+                      <span className="rounded-md bg-slate-50 px-2 py-1">📊 {a.excelFiles.length} Excel</span>
+                      <span className="rounded-md bg-slate-50 px-2 py-1">🖼️ {a.totalImages} images</span>
+                    </div>
+
+                    {/* folders */}
+                    {a.imageRanges.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        {a.imageRanges.slice(0, 3).map((r) => (
+                          <div key={r.id} className="rounded-lg border border-slate-200 px-3 py-1.5" title={`${folderLabel(r)} · ${rangeLabel(r)}`}>
+                            <p className="truncate text-xs font-medium text-slate-800">📁 {folderLabel(r)}</p>
+                            <p className="truncate text-[11px] text-slate-500">{rangeLabel(r)} · {r.count} image(s)</p>
+                          </div>
+                        ))}
+                        {a.imageRanges.length > 3 && <p className="text-[11px] text-slate-400">+ {a.imageRanges.length - 3} more folder(s)</p>}
+                      </div>
+                    )}
                   </div>
-                </li>
+
+                  {/* actions */}
+                  <div className="flex items-center justify-end gap-1 border-t border-slate-100 bg-slate-50/70 px-3 py-2">
+                    <Button size="sm" variant="ghost" onClick={() => setDetailId(a.id)}>View</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditing(a)}>Edit</Button>
+                    <Button size="sm" variant="subtleDanger" onClick={() => setDelAssign(a)}>Delete</Button>
+                  </div>
+                </div>
               ))}
-            </ul>
+            </div>
             {assignQ.data && <Pagination page={dayPage} pageSize={assignQ.data.pageSize} total={assignQ.data.total} onChange={setDayPage} />}
           </Card>
         </div>
